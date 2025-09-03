@@ -16,6 +16,7 @@ interface PersonaCardProps {
   mermaidDiagram?: string;
   isLoading: boolean;
   color: string;
+  onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType }) => void;
 }
 
 const SkeletonLoader: React.FC = () => (
@@ -64,8 +65,14 @@ const MusicalNoteIcon: React.FC<{className?: string}> = ({className}) => (
     </svg>
 );
 
+const ArrowsPointingOutIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+);
 
-export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color }) => {
+
+export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color, onExpandDiagram }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -280,10 +287,20 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
               </ReactMarkdown>
             </div>
             {!isLoading && mermaidSvg && (
-              <div 
-                className="mt-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg flex justify-center items-center overflow-x-auto"
-                dangerouslySetInnerHTML={{ __html: mermaidSvg }}
-              />
+              <div className="relative group mt-6">
+                 <div 
+                  className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg flex justify-center items-center overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: mermaidSvg }}
+                />
+                <button 
+                  onClick={() => onExpandDiagram({ name, icon, color, diagram: mermaidDiagram || '', personaType })}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-800/50 text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-slate-700 hover:text-white transition-all duration-200"
+                  aria-label="Expand diagram"
+                  title="Expand diagram"
+                >
+                  <ArrowsPointingOutIcon className="w-5 h-5" />
+                </button>
+              </div>
             )}
           </>
         )}
