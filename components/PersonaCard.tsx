@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { PersonaType } from '../types';
 import { personaVoiceConfig } from '../config/ttsConfig';
+import { stripMarkdown } from '../utils/textUtils';
+
 
 interface PersonaCardProps {
   name: string;
@@ -42,6 +46,18 @@ const StopCircleIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.563C9.252 14.437 9 14.185 9 13.874V9.563Z" />
+    </svg>
+);
+
+const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
+
+const MusicalNoteIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9c0-1.105 2.239-2 5-2 2.761 0 5 1.105 5 2v4.5M9 9v3.75m-3.75-3.75h10.5a2.25 2.25 0 0 1 2.25 2.25v3.75a2.25 2.25 0 0 1-2.25-2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V11.25a2.25 2.25 0 0 1 2.25-2.25h1.5" />
     </svg>
 );
 
@@ -93,7 +109,8 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     }
 
     if (text && !isLoading && voices.length > 0) {
-      const utterance = new SpeechSynthesisUtterance(text);
+      const cleanText = stripMarkdown(text);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       const config = personaVoiceConfig[personaType];
       
       const selectedVoice = voices.find(voice => voice.name === config.voiceName);
@@ -119,8 +136,12 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
         <span className="text-2xl mr-3">{icon}</span>
         <h3 className="text-lg font-bold text-white tracking-wide">{name}</h3>
       </div>
-      <div className="p-6 text-slate-300 leading-relaxed flex-grow relative">
-        {isLoading ? <SkeletonLoader /> : <p>{text || `Rewrite for ${name} will appear here.`}</p>}
+      <div className="p-6 text-slate-300 leading-relaxed flex-grow relative prose-content">
+        {isLoading ? <SkeletonLoader /> : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {text || `Rewrite for ${name} will appear here.`}
+            </ReactMarkdown>
+        )}
         {!isLoading && text && (
           <div className="absolute top-4 right-4 flex items-center space-x-2">
             <button
@@ -137,6 +158,22 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
               aria-label="Copy text"
             >
               {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5 text-slate-400" />}
+            </button>
+            <button
+              className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Export as Markdown"
+              title="Export as Markdown (coming soon)"
+              disabled
+            >
+              <ArrowDownTrayIcon className="w-5 h-5 text-slate-500" />
+            </button>
+            <button
+              className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Export as Audio"
+              title="Export as Audio (coming soon)"
+              disabled
+            >
+              <MusicalNoteIcon className="w-5 h-5 text-slate-500" />
             </button>
           </div>
         )}
