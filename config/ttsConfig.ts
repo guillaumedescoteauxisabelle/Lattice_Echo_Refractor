@@ -9,7 +9,7 @@ export interface TTSVoiceConfig {
 export const personaVoiceConfig: Record<PersonaType, TTSVoiceConfig> = {
     [PersonaType.Mia]: {
         voiceName: 'Google UK English Female',
-        rate: 1.1,
+        rate: 0.935,
         pitch: 0.9,
     },
     [PersonaType.Miette]: {

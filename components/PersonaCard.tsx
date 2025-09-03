@@ -82,16 +82,17 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     };
   }, []);
 
+  // This effect now correctly handles cancellation when a new request is loading.
   useEffect(() => {
     if (isLoading) {
       setIsCopied(false);
-      // Stop speaking if a new rewrite is loading
-      if (isSpeaking) {
+      // Stop any ongoing speech when loading starts.
+      // The onend/onerror handlers of the utterance will reset the speaking state of whichever component was speaking.
+      if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
-        setIsSpeaking(false);
       }
     }
-  }, [isLoading, isSpeaking]);
+  }, [isLoading]);
 
   const handleCopy = () => {
     if (text && !isLoading) {
@@ -102,10 +103,17 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   };
 
   const handleSpeak = () => {
+    // If this card is speaking, the button acts as a stop button.
     if (isSpeaking) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       return;
+    }
+
+    // Before starting new speech, cancel anything that might already be playing (e.g., from the other card).
+    // This prevents the "interrupted" error by ensuring a clean state for the speech synthesizer.
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
     }
 
     if (text && !isLoading && voices.length > 0) {
@@ -122,7 +130,11 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = (event) => {
-        console.error("Speech synthesis error:", event.error);
+        // The "interrupted" error is expected when we cancel speech to play another.
+        // We handle the state change but don't need to log it as a console error.
+        if (event.error !== 'interrupted') {
+          console.error("Speech synthesis error:", event.error);
+        }
         setIsSpeaking(false);
       };
 
