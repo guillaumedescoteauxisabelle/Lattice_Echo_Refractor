@@ -103,17 +103,19 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   const handleSpeak = () => {
     if (isGeneratingAudio) return;
 
+    const synth = window.speechSynthesis;
+
+    // If speaking, the button acts as a stop button
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      synth.cancel();
       setIsSpeaking(false);
       return;
     }
 
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-    }
-
     if (text && !isLoading && voices.length > 0) {
+      // Always cancel any previous speech to ensure a clean state
+      synth.cancel();
+
       const cleanText = stripMarkdown(text);
       const utterance = new SpeechSynthesisUtterance(cleanText);
       const config = personaVoiceConfig[personaType];
@@ -127,13 +129,13 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = (event) => {
-        if (event.error !== 'interrupted') {
+        if (event.error !== 'interrupted' && event.error !== 'canceled') {
           console.error("Speech synthesis error:", event.error);
         }
         setIsSpeaking(false);
       };
 
-      window.speechSynthesis.speak(utterance);
+      synth.speak(utterance);
     }
   };
 
@@ -154,11 +156,11 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     if (!text || isLoading || isSpeaking || isGeneratingAudio || voices.length === 0) return;
 
     setIsGeneratingAudio(true);
+    // Cancel any ongoing speech to ensure a clean slate for recording
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
 
     try {
-      // FIX: Use standard constraints for getDisplayMedia to capture tab audio.
-      // The non-standard properties `mediaSource` and `suppressLocalAudioPlayback`
-      // were causing errors. The user will be prompted to share their tab with audio.
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
