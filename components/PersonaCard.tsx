@@ -65,6 +65,7 @@ const MusicalNoteIcon: React.FC<{className?: string}> = ({className}) => (
 export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, isLoading, color }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
@@ -82,12 +83,9 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     };
   }, []);
 
-  // This effect now correctly handles cancellation when a new request is loading.
   useEffect(() => {
     if (isLoading) {
       setIsCopied(false);
-      // Stop any ongoing speech when loading starts.
-      // The onend/onerror handlers of the utterance will reset the speaking state of whichever component was speaking.
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       }
@@ -103,15 +101,14 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   };
 
   const handleSpeak = () => {
-    // If this card is speaking, the button acts as a stop button.
+    if (isGeneratingAudio) return;
+
     if (isSpeaking) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       return;
     }
 
-    // Before starting new speech, cancel anything that might already be playing (e.g., from the other card).
-    // This prevents the "interrupted" error by ensuring a clean state for the speech synthesizer.
     if (window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
     }
@@ -130,8 +127,6 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = (event) => {
-        // The "interrupted" error is expected when we cancel speech to play another.
-        // We handle the state change but don't need to log it as a console error.
         if (event.error !== 'interrupted') {
           console.error("Speech synthesis error:", event.error);
         }
@@ -139,6 +134,98 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
       };
 
       window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleExportMarkdown = () => {
+    if (!text || isLoading) return;
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name.toLowerCase().replace(/\s/g, '_')}_rewrite.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAudio = async () => {
+    if (!text || isLoading || isSpeaking || isGeneratingAudio || voices.length === 0) return;
+
+    setIsGeneratingAudio(true);
+
+    try {
+      // FIX: Use standard constraints for getDisplayMedia to capture tab audio.
+      // The non-standard properties `mediaSource` and `suppressLocalAudioPlayback`
+      // were causing errors. The user will be prompted to share their tab with audio.
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+
+      const audioTrack = stream.getAudioTracks()[0];
+      if (!audioTrack) {
+        stream.getTracks().forEach(track => track.stop());
+        alert("Audio track not found. Please ensure you share your tab's audio when prompted.");
+        setIsGeneratingAudio(false);
+        return;
+      }
+
+      const audioStream = new MediaStream([audioTrack]);
+      const recorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${name.toLowerCase().replace(/\s/g, '_')}_rewrite.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        stream.getTracks().forEach(track => track.stop());
+        setIsGeneratingAudio(false);
+      };
+
+      const cleanText = stripMarkdown(text);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      const config = personaVoiceConfig[personaType];
+      const selectedVoice = voices.find(voice => voice.name === config.voiceName);
+      
+      utterance.voice = selectedVoice || voices.find(voice => voice.lang.startsWith('en')) || null;
+      utterance.rate = config.rate;
+      utterance.pitch = config.pitch;
+
+      utterance.onend = () => {
+        setTimeout(() => {
+          if (recorder.state === 'recording') recorder.stop();
+        }, 500);
+      };
+
+      utterance.onerror = (event) => {
+        console.error("Speech synthesis error during export:", event.error);
+        if (recorder.state === 'recording') recorder.stop();
+        stream.getTracks().forEach(track => track.stop());
+        setIsGeneratingAudio(false);
+      };
+      
+      recorder.start();
+      window.speechSynthesis.speak(utterance);
+
+    } catch (err) {
+      console.error('Error capturing audio:', err);
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        alert('Permission to capture audio was denied. Please allow sharing to use this feature.');
+      } else {
+        alert('An error occurred while trying to capture audio.');
+      }
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -158,9 +245,9 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
           <div className="absolute top-4 right-4 flex items-center space-x-2">
             <button
               onClick={handleSpeak}
-              className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200"
+              className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50"
               aria-label={isSpeaking ? "Stop speaking" : "Listen to text"}
-              disabled={voices.length === 0}
+              disabled={voices.length === 0 || isGeneratingAudio}
             >
               {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5 text-slate-400" />}
             </button>
@@ -172,20 +259,29 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
               {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5 text-slate-400" />}
             </button>
             <button
+              onClick={handleExportMarkdown}
               className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Export as Markdown"
-              title="Export as Markdown (coming soon)"
-              disabled
+              title="Export as Markdown"
+              disabled={isLoading || !text}
             >
-              <ArrowDownTrayIcon className="w-5 h-5 text-slate-500" />
+              <ArrowDownTrayIcon className="w-5 h-5 text-slate-400" />
             </button>
             <button
+              onClick={handleExportAudio}
               className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Export as Audio"
-              title="Export as Audio (coming soon)"
-              disabled
+              title="Export as Audio"
+              disabled={isLoading || !text || isSpeaking || isGeneratingAudio || voices.length === 0}
             >
-              <MusicalNoteIcon className="w-5 h-5 text-slate-500" />
+               {isGeneratingAudio ? (
+                <svg className="animate-spin h-5 w-5 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <MusicalNoteIcon className="w-5 h-5 text-slate-400" />
+              )}
             </button>
           </div>
         )}
