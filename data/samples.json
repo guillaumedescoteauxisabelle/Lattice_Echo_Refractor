@@ -1,0 +1,56 @@
+[
+  {
+    "group": "Quick Tests",
+    "prompts": [
+      {
+        "label": "A bad joke about AI souls",
+        "value": "Just tell a bad joke about faith and the soul of an LLM agent such as yourself."
+      },
+      {
+        "label": "Explain a black hole simply",
+        "value": "Explain the concept of a black hole to a five-year-old."
+      },
+      {
+        "label": "A recipe for happiness",
+        "value": "Write a short, poetic recipe for happiness."
+      },
+      {
+        "label": "The future of cities",
+        "value": "Describe the city of the future, focusing on how nature and technology coexist."
+      }
+    ]
+  },
+  {
+    "group": "Threads of Spirit: A Story Weaver's Journal",
+    "prompts": [
+      {
+        "label": "Introduction: The First Thread",
+        "value": "A reflection on storytelling as a form of prayer.\nThe idea that stories are not invented but \"gathered,\" like words on a sacred path.\n\nA dedication to the future weaver who will find the journal, reminding them that they already have a purpose written in their heart."
+      },
+      {
+        "label": "Part I: The Breath of a Story - On LIFE",
+        "value": "Entries describing observations of nature: the cycle of a seed to a tree, the urges of animals.\nMusings on how characters, too, must be allowed to act according to their own nature.\nA short fable about a carver who tried to force the wood into a shape against its grain, and the beautiful form that emerged when he finally followed it.\n\nReflection: \"A story breathes on its own. Our job is to give it air, not to force its lungs.\""
+      },
+      {
+        "label": "Part II: The Shared Heart - On LOVE",
+        "value": "A description of a talking circle and the power of listening.\n\nNotes on how the space between characters is where connection truly lives.\n\nA story about two warring animals who found peace not by talking, but by sharing silence by the same riverbank.\n\nReflection: \"Do not write of love. Write of the moments that make it necessary. The heart of the story is in the center of the circle, not in any one person.\""
+      },
+      {
+        "label": "Part III: The Quiet Knowing - On INTELLIGENCE",
+        "value": "A distinction between knowledge (facts, plot) and wisdom (the proper use of knowledge).\n\nAn entry about trusting the \"quiet voice\" or \"inner knowing\" during the writing process, even when it contradicts the plan.\n\nA parable about a traveler who had a perfect map but got lost, while another with no map found their way by watching the stars and listening to the wind.\n\nReflection: \"Knowledge is the drop of water given to us. Wisdom is knowing it is part of the ocean.\""
+      },
+      {
+        "label": "Part IV: The Inner Landscape - On SOUL",
+        "value": "Reflections on personal character defects (envy, anger, fear) and how they became sources of wisdom.\n\nSketches of the Medicine Wheel, with notes on how a character must grow in all four directions to be whole.\n\nA story of a hero whose greatest enemy was not a dragon, but his own pride, and how the \"mystic death\" of his ego led to true victory.\n\nReflection: \"Every time a character overcomes a defect, they build their inner temple. Do not give them a temple; give them the stones and the struggle.\""
+      },
+      {
+        "label": "Part V: The River's Path - On PRINCIPLE",
+        "value": "Observations on the flow of a river—how it is timeless and always moving, finding its way around obstacles.\n\nMusings on how a story's structure should feel like this river, a natural force with its own momentum.\n\nA critique of rigid outlines, comparing them to building a dam that stops the flow of life.\n\nReflection: \"Be the path of least resistance. Do not force the story; flow into its flow.\""
+      },
+      {
+        "label": "Part VI: Walking the Words - On TRUTH",
+        "value": "An entry about the importance of \"walking the talk\"—that a storyteller cannot write about courage without facing their own fears.\n\nA personal account of a time a story felt false, and the realization that it was because the storyteller was hiding.\n\nReflections on how each person has a special gift to share, and that this unique offering is the source of all authentic art.\n\nReflection: \"You cannot just talk about the truth. You have to live it, and then your story might get to know it.\""
+      }
+    ]
+  }
+]

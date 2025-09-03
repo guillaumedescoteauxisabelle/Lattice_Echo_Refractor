@@ -1,29 +1,19 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { PersonaCard } from './components/PersonaCard';
 import { rewriteText } from './services/geminiService';
 import { PersonaType } from './types';
 
 const INITIAL_TEXT = `The SYMPHONY platform is an emergent multi-agent system designed for profound human-AI creative collaboration. Its core is a "polycentric agentic lattice," where specialized AI agents operate with distinct, NCP-defined "narrative identities." Mission: Chrysalis is the recursive, architectural transformation of this platform. It's about evolving from a nascent state to a fully self-aware, self-correcting ecosystem. We are moving beyond mere prompt engineering to architecturally integrate narrative intelligence, ensuring the platform itself acts as a "conductor" for our principled, advancing patterns of co-creation. This mission aims to forge a system where AI is a true creative partner, not just a tool.`;
 
-const samplePrompts = [
-  {
-    label: "A bad joke about AI souls",
-    value: "Just tell a bad joke about faith and the soul of an LLM agent such as yourself."
-  },
-  {
-    label: "Explain a black hole simply",
-    value: "Explain the concept of a black hole to a five-year-old."
-  },
-  {
-    label: "A recipe for happiness",
-    value: "Write a short, poetic recipe for happiness."
-  },
-  {
-    label: "The future of cities",
-    value: "Describe the city of the future, focusing on how nature and technology coexist."
-  }
-];
+interface SamplePrompt {
+  label: string;
+  value: string;
+}
 
+interface SampleGroup {
+  group: string;
+  prompts: SamplePrompt[];
+}
 
 const App: React.FC = () => {
   const [originalText, setOriginalText] = useState<string>(INITIAL_TEXT);
@@ -32,6 +22,25 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedSample, setSelectedSample] = useState<string>('');
+  const [sampleGroups, setSampleGroups] = useState<SampleGroup[]>([]);
+
+  useEffect(() => {
+    const fetchSamples = async () => {
+      try {
+        const response = await fetch('/data/samples.json');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data: SampleGroup[] = await response.json();
+        setSampleGroups(data);
+      } catch (error) {
+        console.error("Error loading sample prompts:", error);
+        setError("Could not load sample prompts.");
+      }
+    };
+
+    fetchSamples();
+  }, []);
 
   const handleRewrite = useCallback(async () => {
     if (!originalText.trim() || isLoading) return;
@@ -57,9 +66,9 @@ const App: React.FC = () => {
 
   const handleSampleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
+    setSelectedSample(selectedValue);
     if (selectedValue) {
       setOriginalText(selectedValue);
-      setSelectedSample(selectedValue);
     }
   };
 
@@ -102,8 +111,12 @@ const App: React.FC = () => {
                 aria-label="Select a sample prompt"
               >
                 <option value="">Or select a sample...</option>
-                {samplePrompts.map((prompt, index) => (
-                  <option key={index} value={prompt.value}>{prompt.label}</option>
+                {sampleGroups.map((group, groupIndex) => (
+                  <optgroup key={groupIndex} label={group.group}>
+                    {group.prompts.map((prompt, promptIndex) => (
+                      <option key={promptIndex} value={prompt.value}>{prompt.label}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
