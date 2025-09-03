@@ -139,7 +139,11 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
 
   const handleCopy = () => {
     if (text && !isLoading) {
-      navigator.clipboard.writeText(text);
+      let fullContent = text;
+      if (mermaidDiagram) {
+        fullContent += `\n\n## Visual Representation\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
+      }
+      navigator.clipboard.writeText(fullContent);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }
@@ -317,7 +321,8 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
             <button
               onClick={handleCopy}
               className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200"
-              aria-label="Copy text"
+              aria-label="Copy text and diagram"
+              title="Copy text and diagram"
             >
               {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5 text-slate-400" />}
             </button>
