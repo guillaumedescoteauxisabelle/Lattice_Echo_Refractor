@@ -5,12 +5,33 @@ import { PersonaType } from './types';
 
 const INITIAL_TEXT = `The SYMPHONY platform is an emergent multi-agent system designed for profound human-AI creative collaboration. Its core is a "polycentric agentic lattice," where specialized AI agents operate with distinct, NCP-defined "narrative identities." Mission: Chrysalis is the recursive, architectural transformation of this platform. It's about evolving from a nascent state to a fully self-aware, self-correcting ecosystem. We are moving beyond mere prompt engineering to architecturally integrate narrative intelligence, ensuring the platform itself acts as a "conductor" for our principled, advancing patterns of co-creation. This mission aims to forge a system where AI is a true creative partner, not just a tool.`;
 
+const samplePrompts = [
+  {
+    label: "A bad joke about AI souls",
+    value: "Just tell a bad joke about faith and the soul of an LLM agent such as yourself."
+  },
+  {
+    label: "Explain a black hole simply",
+    value: "Explain the concept of a black hole to a five-year-old."
+  },
+  {
+    label: "A recipe for happiness",
+    value: "Write a short, poetic recipe for happiness."
+  },
+  {
+    label: "The future of cities",
+    value: "Describe the city of the future, focusing on how nature and technology coexist."
+  }
+];
+
+
 const App: React.FC = () => {
   const [originalText, setOriginalText] = useState<string>(INITIAL_TEXT);
   const [miaRewrite, setMiaRewrite] = useState<string>('');
   const [mietteRewrite, setMietteRewrite] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSample, setSelectedSample] = useState<string>('');
 
   const handleRewrite = useCallback(async () => {
     if (!originalText.trim() || isLoading) return;
@@ -33,6 +54,19 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [originalText, isLoading]);
+
+  const handleSampleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    if (selectedValue) {
+      setOriginalText(selectedValue);
+      setSelectedSample(selectedValue);
+    }
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setOriginalText(e.target.value);
+    setSelectedSample(''); // Reset dropdown when user types
+  };
 
   const MagicWandIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
@@ -59,10 +93,23 @@ const App: React.FC = () => {
 
         <main className="space-y-8">
           <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 text-slate-200">Your Text</h2>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+              <h2 className="text-xl font-semibold text-slate-200">Your Text</h2>
+              <select
+                value={selectedSample}
+                onChange={handleSampleChange}
+                className="bg-slate-900/70 border border-slate-600 rounded-md px-3 py-1.5 text-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm w-full sm:w-auto"
+                aria-label="Select a sample prompt"
+              >
+                <option value="">Or select a sample...</option>
+                {samplePrompts.map((prompt, index) => (
+                  <option key={index} value={prompt.value}>{prompt.label}</option>
+                ))}
+              </select>
+            </div>
             <textarea
               value={originalText}
-              onChange={(e) => setOriginalText(e.target.value)}
+              onChange={handleTextareaChange}
               placeholder="Enter text to rewrite..."
               className="w-full h-48 p-4 bg-slate-900/70 border border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200 text-slate-200 resize-none"
             />
