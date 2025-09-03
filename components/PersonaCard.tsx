@@ -5,12 +5,15 @@ import { PersonaType } from '../types';
 import { personaVoiceConfig } from '../config/ttsConfig';
 import { stripMarkdown } from '../utils/textUtils';
 
+// Declare the global mermaid object provided by the script tag
+declare const mermaid: any;
 
 interface PersonaCardProps {
   name: string;
   personaType: PersonaType;
   icon: string;
   text: string;
+  mermaidDiagram?: string;
   isLoading: boolean;
   color: string;
 }
@@ -62,11 +65,12 @@ const MusicalNoteIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 
-export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, isLoading, color }) => {
+export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [mermaidSvg, setMermaidSvg] = useState<string>('');
 
   useEffect(() => {
     const handleVoicesChanged = () => {
@@ -91,6 +95,40 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
       }
     }
   }, [isLoading]);
+  
+  useEffect(() => {
+    const renderMermaid = async () => {
+      if (mermaidDiagram && !isLoading && typeof mermaid !== 'undefined') {
+        try {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            fontFamily: 'Inter, sans-serif',
+            themeVariables: {
+              background: '#0f172a', // slate-900
+              primaryColor: '#1e293b', // slate-800
+              primaryTextColor: '#f1f5f9', // slate-100
+              lineColor: '#64748b', // slate-500
+              textColor: '#cbd5e1', // slate-300
+              nodeBorder: personaType === PersonaType.Mia ? '#38bdf8' : '#f472b6',
+            }
+          });
+          // Unique ID to prevent Mermaid from caching across renders
+          const diagramId = `mermaid-${personaType}-${Date.now()}`;
+          const { svg } = await mermaid.render(diagramId, mermaidDiagram);
+          setMermaidSvg(svg);
+        } catch (error) {
+          console.error('Mermaid rendering failed for', personaType, ':', error);
+          setMermaidSvg(`<p class="text-red-400 text-center p-4">Error: Could not render diagram.</p>`);
+        }
+      } else {
+        setMermaidSvg(''); // Clear SVG when loading or if there's no diagram
+      }
+    };
+  
+    renderMermaid();
+  }, [mermaidDiagram, isLoading, personaType]);
+
 
   const handleCopy = () => {
     if (text && !isLoading) {
@@ -105,7 +143,6 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
 
     const synth = window.speechSynthesis;
 
-    // If speaking, the button acts as a stop button
     if (isSpeaking) {
       synth.cancel();
       setIsSpeaking(false);
@@ -113,13 +150,10 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     }
 
     if (text && !isLoading && voices.length > 0) {
-      // Always cancel any previous speech to ensure a clean state
       synth.cancel();
-
       const cleanText = stripMarkdown(text);
       const utterance = new SpeechSynthesisUtterance(cleanText);
       const config = personaVoiceConfig[personaType];
-      
       const selectedVoice = voices.find(voice => voice.name === config.voiceName);
 
       utterance.voice = selectedVoice || voices.find(voice => voice.lang.startsWith('en')) || null;
@@ -141,7 +175,8 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
 
   const handleExportMarkdown = () => {
     if (!text || isLoading) return;
-    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const fullContent = `${text}\n\n## Visual Representation\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
+    const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -156,7 +191,6 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     if (!text || isLoading || isSpeaking || isGeneratingAudio || voices.length === 0) return;
 
     setIsGeneratingAudio(true);
-    // Cancel any ongoing speech to ensure a clean slate for recording
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
 
@@ -237,11 +271,21 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
         <span className="text-2xl mr-3">{icon}</span>
         <h3 className="text-lg font-bold text-white tracking-wide">{name}</h3>
       </div>
-      <div className="p-6 text-slate-300 leading-relaxed flex-grow relative prose-content">
+      <div className="p-6 text-slate-300 leading-relaxed flex-grow relative">
         {isLoading ? <SkeletonLoader /> : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <>
+            <div className="prose-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {text || `Rewrite for ${name} will appear here.`}
-            </ReactMarkdown>
+              </ReactMarkdown>
+            </div>
+            {!isLoading && mermaidSvg && (
+              <div 
+                className="mt-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg flex justify-center items-center overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: mermaidSvg }}
+              />
+            )}
+          </>
         )}
         {!isLoading && text && (
           <div className="absolute top-4 right-4 flex items-center space-x-2">

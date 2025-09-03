@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PersonaCard } from './components/PersonaCard';
-import { rewriteText } from './services/geminiService';
+import { rewriteText, RewriteResult } from './services/geminiService';
 import { PersonaType } from './types';
 
 const INITIAL_TEXT = `The SYMPHONY platform is an emergent multi-agent system designed for profound human-AI creative collaboration. Its core is a "polycentric agentic lattice," where specialized AI agents operate with distinct, NCP-defined "narrative identities." Mission: Chrysalis is the recursive, architectural transformation of this platform. It's about evolving from a nascent state to a fully self-aware, self-correcting ecosystem. We are moving beyond mere prompt engineering to architecturally integrate narrative intelligence, ensuring the platform itself acts as a "conductor" for our principled, advancing patterns of co-creation. This mission aims to forge a system where AI is a true creative partner, not just a tool.`;
@@ -17,8 +17,8 @@ interface SampleGroup {
 
 const App: React.FC = () => {
   const [originalText, setOriginalText] = useState<string>(INITIAL_TEXT);
-  const [miaRewrite, setMiaRewrite] = useState<string>('');
-  const [mietteRewrite, setMietteRewrite] = useState<string>('');
+  const [miaData, setMiaData] = useState<RewriteResult | null>(null);
+  const [mietteData, setMietteData] = useState<RewriteResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedSample, setSelectedSample] = useState<string>('');
@@ -47,16 +47,16 @@ const App: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
-    setMiaRewrite('');
-    setMietteRewrite('');
+    setMiaData(null);
+    setMietteData(null);
 
     try {
       const [miaResult, mietteResult] = await Promise.all([
         rewriteText(originalText, PersonaType.Mia),
         rewriteText(originalText, PersonaType.Miette),
       ]);
-      setMiaRewrite(miaResult);
-      setMietteRewrite(mietteResult);
+      setMiaData(miaResult);
+      setMietteData(mietteResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -156,7 +156,8 @@ const App: React.FC = () => {
               name="Mia"
               personaType={PersonaType.Mia}
               icon="🤖"
-              text={miaRewrite}
+              text={miaData?.rewrite ?? ''}
+              mermaidDiagram={miaData?.mermaidDiagram}
               isLoading={isLoading}
               color="bg-gradient-to-r from-blue-500 to-cyan-500"
             />
@@ -164,7 +165,8 @@ const App: React.FC = () => {
               name="Miette"
               personaType={PersonaType.Miette}
               icon="🎨"
-              text={mietteRewrite}
+              text={mietteData?.rewrite ?? ''}
+              mermaidDiagram={mietteData?.mermaidDiagram}
               isLoading={isLoading}
               color="bg-gradient-to-r from-pink-500 to-rose-500"
             />
