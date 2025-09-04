@@ -116,7 +116,8 @@ interface PersonaCardProps {
   mermaidDiagram?: string;
   isLoading: boolean;
   color: string;
-  onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType, rewrite: string }) => void;
+  generationId: string;
+  onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType, rewrite: string, generationId: string }) => void;
   onDiagramError: (personaType: PersonaType, faultyDiagram: string) => void;
 }
 
@@ -173,7 +174,7 @@ const ArrowsPointingOutIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 
-export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color, onExpandDiagram, onDiagramError }) => {
+export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color, generationId, onExpandDiagram, onDiagramError }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -303,7 +304,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = createFilename(name, text, 'md');
+    a.download = createFilename(name, text, 'md', generationId);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -342,7 +343,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = createFilename(name, text, 'webm');
+        a.download = createFilename(name, text, 'webm', generationId);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -420,7 +421,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                   dangerouslySetInnerHTML={{ __html: mermaidSvg }}
                 />
                 <button 
-                  onClick={() => onExpandDiagram({ name, icon, color, diagram: mermaidDiagram || '', personaType, rewrite: text })}
+                  onClick={() => onExpandDiagram({ name, icon, color, diagram: mermaidDiagram || '', personaType, rewrite: text, generationId })}
                   className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-800/50 text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-slate-700 hover:text-white transition-all duration-200"
                   aria-label="Expand diagram"
                   title="Expand diagram"

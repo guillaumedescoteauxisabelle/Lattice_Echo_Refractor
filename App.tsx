@@ -23,6 +23,7 @@ interface ModalData {
     diagram: string;
     personaType: PersonaType;
     rewrite: string;
+    generationId: string;
 }
 
 const App: React.FC = () => {
@@ -35,6 +36,7 @@ const App: React.FC = () => {
   const [sampleGroups, setSampleGroups] = useState<SampleGroup[]>([]);
   const [modalData, setModalData] = useState<ModalData | null>(null);
   const [retryCount, setRetryCount] = useState({[PersonaType.Mia]: 0, [PersonaType.Miette]: 0});
+  const [generationId, setGenerationId] = useState<string>('');
 
   useEffect(() => {
     const fetchSamples = async () => {
@@ -62,6 +64,16 @@ const App: React.FC = () => {
     setMiaData(null);
     setMietteData(null);
     setRetryCount({ [PersonaType.Mia]: 0, [PersonaType.Miette]: 0 });
+
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+    setGenerationId(timestamp);
 
     try {
       const [miaResult, mietteResult] = await Promise.all([
@@ -218,6 +230,7 @@ const App: React.FC = () => {
                 color="bg-gradient-to-r from-blue-500 to-cyan-500"
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
+                generationId={generationId}
               />
               <PersonaCard
                 name="Miette"
@@ -229,6 +242,7 @@ const App: React.FC = () => {
                 color="bg-gradient-to-r from-pink-500 to-rose-500"
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
+                generationId={generationId}
               />
             </div>
           </main>
@@ -242,6 +256,7 @@ const App: React.FC = () => {
         personaIcon={modalData?.icon || ''}
         personaColor={modalData?.color || ''}
         rewrite={modalData?.rewrite || ''}
+        generationId={modalData?.generationId || ''}
       />
     </>
   );

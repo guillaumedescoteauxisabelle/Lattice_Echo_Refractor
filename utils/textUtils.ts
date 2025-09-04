@@ -29,25 +29,25 @@ export const stripMarkdown = (markdown: string): string => {
   return output.trim();
 };
 
-export const createFilename = (personaName: string, markdownContent: string, extension: string): string => {
+export const createFilename = (personaName: string, markdownContent: string, extension: string, generationId: string): string => {
+  let basename = '';
+
   if (!markdownContent) {
-    return `${personaName.toLowerCase().replace(/\s/g, '_')}_export.${extension}`;
-  }
-
-  let title = '';
-
-  // 1. Try to find a markdown h1 or h2 as the title
-  const headingMatch = markdownContent.match(/^#{1,2}\s+(.*)/m);
-  if (headingMatch && headingMatch[1]) {
-    title = headingMatch[1].trim();
+    basename = 'export';
   } else {
-    // 2. If no heading, take the first few words of the stripped text
-    const strippedText = stripMarkdown(markdownContent);
-    title = strippedText.split(/\s+/).slice(0, 6).join(' ');
+    // 1. Try to find a markdown h1 or h2 as the title
+    const headingMatch = markdownContent.match(/^#{1,2}\s+(.*)/m);
+    if (headingMatch && headingMatch[1]) {
+      basename = headingMatch[1].trim();
+    } else {
+      // 2. If no heading, take the first few words of the stripped text
+      const strippedText = stripMarkdown(markdownContent);
+      basename = strippedText.split(/\s+/).slice(0, 6).join(' ');
+    }
   }
 
   // 3. Sanitize the title for a filename
-  const sanitizedTitle = title
+  const sanitizedBasename = basename
     .trim()
     .toLowerCase()
     .replace(/[^\w\s-]/g, '') // remove non-word characters except spaces and hyphens
@@ -56,11 +56,10 @@ export const createFilename = (personaName: string, markdownContent: string, ext
     .substring(0, 50) // truncate
     .replace(/_$/, ''); // remove trailing underscore
 
-  const sanitizedPersona = personaName.toLowerCase().replace(/\s/g, '_');
+  const finalBasename = sanitizedBasename || 'export';
+  const personaSuffix = personaName.toLowerCase();
+  
+  const uniqueBasename = generationId ? `${finalBasename}_${generationId}` : finalBasename;
 
-  if (!sanitizedTitle) {
-      return `${sanitizedPersona}_export.${extension}`;
-  }
-
-  return `${sanitizedPersona}_${sanitizedTitle}.${extension}`;
+  return `${uniqueBasename}.${personaSuffix}.${extension}`;
 };
