@@ -221,7 +221,7 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <PersonaCard
-                name="Mia"
+                name="🧠 Mia"
                 personaType={PersonaType.Mia}
                 icon="🤖"
                 text={miaData?.rewrite ?? ''}
@@ -233,7 +233,7 @@ const App: React.FC = () => {
                 generationId={generationId}
               />
               <PersonaCard
-                name="Miette"
+                name="🌸 Miette"
                 personaType={PersonaType.Miette}
                 icon="🎨"
                 text={mietteData?.rewrite ?? ''}

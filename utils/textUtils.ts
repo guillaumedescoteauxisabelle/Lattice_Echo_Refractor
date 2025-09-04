@@ -57,7 +57,9 @@ export const createFilename = (personaName: string, markdownContent: string, ext
     .replace(/_$/, ''); // remove trailing underscore
 
   const finalBasename = sanitizedBasename || 'export';
-  const personaSuffix = personaName.toLowerCase();
+  // Extracts the last word (the name) and makes it lowercase.
+  // This handles "🧠 Mia" -> "mia" and "🌸 Miette" -> "miette".
+  const personaSuffix = personaName.split(' ').pop()?.toLowerCase() || personaName.toLowerCase();
   
   const uniqueBasename = generationId ? `${finalBasename}_${generationId}` : finalBasename;
 
