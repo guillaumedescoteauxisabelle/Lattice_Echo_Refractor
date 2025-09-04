@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PersonaType } from '../types';
 import { personaVoiceConfig } from '../config/ttsConfig';
-import { stripMarkdown } from '../utils/textUtils';
+import { stripMarkdown, createFilename } from '../utils/textUtils';
 
 // Declare the global mermaid object provided by the script tag
 declare const mermaid: any;
@@ -16,7 +16,7 @@ interface PersonaCardProps {
   mermaidDiagram?: string;
   isLoading: boolean;
   color: string;
-  onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType }) => void;
+  onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType, rewrite: string }) => void;
   onDiagramError: (personaType: PersonaType, faultyDiagram: string) => void;
 }
 
@@ -202,7 +202,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${name.toLowerCase().replace(/\s/g, '_')}_rewrite.md`;
+    a.download = createFilename(name, text, 'md');
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -241,7 +241,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${name.toLowerCase().replace(/\s/g, '_')}_rewrite.webm`;
+        a.download = createFilename(name, text, 'webm');
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -308,7 +308,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                   dangerouslySetInnerHTML={{ __html: mermaidSvg }}
                 />
                 <button 
-                  onClick={() => onExpandDiagram({ name, icon, color, diagram: mermaidDiagram || '', personaType })}
+                  onClick={() => onExpandDiagram({ name, icon, color, diagram: mermaidDiagram || '', personaType, rewrite: text })}
                   className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-800/50 text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-slate-700 hover:text-white transition-all duration-200"
                   aria-label="Expand diagram"
                   title="Expand diagram"

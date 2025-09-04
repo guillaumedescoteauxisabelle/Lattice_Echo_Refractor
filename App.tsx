@@ -22,6 +22,7 @@ interface ModalData {
     color: string;
     diagram: string;
     personaType: PersonaType;
+    rewrite: string;
 }
 
 const App: React.FC = () => {
@@ -240,6 +241,7 @@ const App: React.FC = () => {
         personaName={modalData?.name || ''}
         personaIcon={modalData?.icon || ''}
         personaColor={modalData?.color || ''}
+        rewrite={modalData?.rewrite || ''}
       />
     </>
   );

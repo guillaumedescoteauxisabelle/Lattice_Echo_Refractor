@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createFilename } from '../utils/textUtils';
 
 // Declare the global mermaid object
 declare const mermaid: any;
@@ -10,6 +11,7 @@ interface DiagramModalProps {
   personaName: string;
   personaIcon: string;
   personaColor: string;
+  rewrite: string;
 }
 
 const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
@@ -18,7 +20,7 @@ const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
     </svg>
 );
 
-export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, diagram, personaName, personaIcon, personaColor }) => {
+export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, diagram, personaName, personaIcon, personaColor, rewrite }) => {
   const diagramRef = useRef<HTMLDivElement>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
   const [svgContent, setSvgContent] = useState<string>('');
@@ -81,12 +83,12 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
 
   const handleDownload = () => {
     if (!svgContent) return;
-
+    const filename = createFilename(personaName, rewrite, 'svg');
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${personaName.toLowerCase().replace(/\s/g, '_')}_diagram.svg`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

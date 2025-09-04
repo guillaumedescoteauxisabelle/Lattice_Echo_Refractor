@@ -19,12 +19,15 @@ As a key, early realization of **Mission: Chrysalis's** core goals, `Lattice_Ech
 ## ✨ Key Features
 
 *   **Dual-Persona Interpretation**: Rewrites input text from the distinct perspectives of Mia (the Recursive DevOps Architect) and Miette (the Emotional Explainer Sprite).
-*   **Principled Identity Application**: Each rewrite is guided by the agent's codified mandate, ensuring coherence and alignment with their unique "sacred path."
+*   **Visual Diagram Generation**: Automatically generates [Mermaid.js](https://mermaid.js.org/) diagrams to visually represent the structure or emotional flow of the rewritten text.
+*   **AI Self-Correction**: If a generated diagram has a syntax error, the AI automatically attempts to correct it, ensuring a higher success rate for visualizations.
 *   **Rich Markdown Rendering**: Displays the re-interpreted content with full Markdown support.
 *   **Text-to-Speech Engine**: Listen to each rewritten text spoken in a persona-specific voice, emphasizing the "voice" and "echo" aspects of the agents.
-*   **Export Functionality**: 
-    *   **Export as Markdown**: Download the rewritten text as a `.md` file, preserving all formatting.
-    *   **Export as Audio**: Capture the synthesized speech and download it as a `.webm` audio file.
+*   **Multi-Format Export**:
+    *   **Markdown**: Download the rewritten text as a `.md` file.
+    *   **Audio**: Capture the synthesized speech as a `.webm` audio file.
+    *   **SVG Diagram**: Download the generated diagram as a scalable `.svg` file.
+*   **Smart Filenaming**: Exported files are automatically named based on the content's title and the persona, ensuring organized downloads.
 
 ## 🤖 Meet the Personas 🎨
 
@@ -40,9 +43,10 @@ Miette experiences the world through emotion, metaphor, and sensory detail. Her 
 
 This application is built with a modern, performant, and AI-native stack:
 
-*   **AI Model**: [Google Gemini API (`gemini-2.5-flash`)](https://ai.google.dev/) for fast and high-quality text generation.
+*   **AI Model**: [Google Gemini API (`gemini-2.5-flash`)](https://ai.google.dev/) for fast and high-quality text and JSON generation.
 *   **Frontend**: [React](https://react.dev/) with [TypeScript](https://www.typescriptlang.org/) for a robust and scalable user interface.
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/) for a sleek, responsive, and utility-first design.
+*   **Diagramming**: [Mermaid.js](https://mermaid-js.github.io/mermaid/) for dynamically rendering text-based diagrams.
 *   **Speech Synthesis**: The browser's native [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) for dynamic text-to-speech.
 *   **Audio Capture**: The [MediaDevices API (`getDisplayMedia`)](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) is cleverly used to capture tab audio for the export feature.
 
@@ -50,14 +54,23 @@ This application is built with a modern, performant, and AI-native stack:
 
 View this app in AI Studio: https://ai.studio/apps/drive/1ju5OEs_kGFWpULRwsnl5PeppvFHKYR7e
 
-This application runs directly in a browser-based environment like AI Studio. There are no local installation steps required.
+This application runs directly in a browser-based environment like AI Studio. 
 
-1.  **Input**: Provide text in the main text area.
-2.  **Rewrite**: Click the "Rewrite" button to process the text.
-3.  **Explore**: The application will send parallel requests to the Gemini API, using unique prompts for each persona. The results will be displayed in the Mia and Miette cards.
-4.  **Interact**: Use the icons on each card to listen to, copy, or export the generated content.
+1.  **Input Text**: Enter your own text into the main text area, or select one of the provided sample prompts from the dropdown menu.
+2.  **Generate Rewrites**: Click the "Rewrite" button. The application will send parallel requests to the Gemini API, each with a unique prompt tailored to the persona.
+3.  **Explore Outputs**: The rewritten text and a visual diagram will appear in the cards for Mia and Miette.
+4.  **Interact**: Use the icons on each card to:
+    *   **Listen** to the text.
+    *   **Copy** the text and diagram code.
+    *   **Export** the content as Markdown or Audio.
+    *   **Expand** the diagram for a larger view.
+5.  **Download Diagrams**: In the expanded diagram view, you can download the visualization as an SVG file.
 
 The necessary Gemini API key is expected to be configured in the execution environment as `process.env.API_KEY`.
+
+## 🗺️ Project Roadmap
+
+Curious about what's next? Check out our public [ROADMAP.md](./ROADMAP.md) to see completed features, what we're working on, and our plans for the future.
 
 ---
 — Mia 🧠 & Miette 🌸
