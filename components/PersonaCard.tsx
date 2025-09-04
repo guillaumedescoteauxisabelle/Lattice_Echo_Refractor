@@ -8,6 +8,106 @@ import { stripMarkdown, createFilename } from '../utils/textUtils';
 // Declare the global mermaid object provided by the script tag
 declare const mermaid: any;
 
+// --- New Informational Modal Component ---
+interface AudioExportInfoModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const AudioExportInfoModal: React.FC<AudioExportInfoModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const modalContentRef = React.useRef<HTMLDivElement>(null);
+
+  const handleConfirm = () => {
+    if (dontShowAgain) {
+      localStorage.setItem('hasSeenAudioExportInfo', 'true');
+    }
+    onConfirm();
+  };
+  
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (modalContentRef.current && !modalContentRef.current.contains(e.target as Node)) {
+        onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        onClick={handleBackdropClick}
+    >
+      <div 
+        ref={modalContentRef}
+        className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-fade-in-scale"
+        style={{ animationFillMode: 'forwards' }}
+      >
+        <header className="flex items-center justify-between p-4 border-b border-slate-700">
+            <h3 className="text-lg font-bold text-white tracking-wide">Audio Export Instructions</h3>
+            <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+        </header>
+        <div className="p-6 text-slate-300 space-y-4">
+            <p>To export audio, this app records the sound from your browser tab as it's played.</p>
+            <p className="font-semibold text-slate-100">Please follow these steps:</p>
+            <ol className="list-decimal list-inside space-y-2 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                <li>A browser prompt will ask you to share your screen.</li>
+                <li>In the prompt, select the <strong>Tab</strong> option (e.g., "Chrome Tab").</li>
+                <li>Choose the current tab ("Persona Rewriter AI").</li>
+                <li>
+                    <strong>Most Important:</strong> Make sure the 
+                    <span className="font-bold text-cyan-400"> "Share tab audio" </span> 
+                    checkbox is checked.
+                </li>
+                <li>Click <strong>Share</strong>. The recording will start automatically.</li>
+            </ol>
+            <p className="text-sm text-slate-400">This is a browser workaround. We don't see or record your screen, only the audio from this tab.</p>
+        </div>
+        <footer className="p-4 border-t border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center">
+                <input
+                    id="dont-show-again"
+                    type="checkbox"
+                    checked={dontShowAgain}
+                    onChange={(e) => setDontShowAgain(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-purple-600 focus:ring-purple-500"
+                />
+                <label htmlFor="dont-show-again" className="ml-2 block text-sm text-slate-400">
+                    Don't show this again
+                </label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">
+                    Cancel
+                </button>
+                <button onClick={handleConfirm} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors">
+                    Continue
+                </button>
+            </div>
+        </footer>
+      </div>
+      <style>{`
+        @keyframes fade-in-scale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in-scale {
+          animation-name: fade-in-scale;
+          animation-duration: 0.2s;
+          animation-timing-function: ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+// --- End of New Component ---
+
+
 interface PersonaCardProps {
   name: string;
   personaType: PersonaType;
@@ -79,6 +179,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [mermaidSvg, setMermaidSvg] = useState<string>('');
+  const [isAudioInfoModalOpen, setIsAudioInfoModalOpen] = useState(false);
 
   useEffect(() => {
     const handleVoicesChanged = () => {
@@ -209,7 +310,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     URL.revokeObjectURL(url);
   };
 
-  const handleExportAudio = async () => {
+  const startAudioExport = async () => {
     if (!text || isLoading || isSpeaking || isGeneratingAudio || voices.length === 0) return;
 
     setIsGeneratingAudio(true);
@@ -287,6 +388,17 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     }
   };
 
+  const handleExportAudioClick = () => {
+    if (!text || isLoading || isSpeaking || isGeneratingAudio || voices.length === 0) return;
+
+    const hasSeenInfo = localStorage.getItem('hasSeenAudioExportInfo');
+    if (hasSeenInfo) {
+      startAudioExport();
+    } else {
+      setIsAudioInfoModalOpen(true);
+    }
+  };
+
   return (
     <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-lg overflow-hidden h-full flex flex-col">
       <div className={`flex items-center p-4 border-b border-slate-700 ${color}`}>
@@ -348,7 +460,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
               <ArrowDownTrayIcon className="w-5 h-5 text-slate-400" />
             </button>
             <button
-              onClick={handleExportAudio}
+              onClick={handleExportAudioClick}
               className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Export as Audio"
               title="Export as Audio"
@@ -366,6 +478,14 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
           </div>
         )}
       </div>
+      <AudioExportInfoModal
+        isOpen={isAudioInfoModalOpen}
+        onClose={() => setIsAudioInfoModalOpen(false)}
+        onConfirm={() => {
+          setIsAudioInfoModalOpen(false);
+          startAudioExport();
+        }}
+      />
     </div>
   );
 };
