@@ -17,6 +17,7 @@ interface PersonaCardProps {
   isLoading: boolean;
   color: string;
   onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType }) => void;
+  onDiagramError: (personaType: PersonaType, faultyDiagram: string) => void;
 }
 
 const SkeletonLoader: React.FC = () => (
@@ -72,7 +73,7 @@ const ArrowsPointingOutIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 
-export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color, onExpandDiagram }) => {
+export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, text, mermaidDiagram, isLoading, color, onExpandDiagram, onDiagramError }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -105,6 +106,12 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   
   useEffect(() => {
     const renderMermaid = async () => {
+      // Handle the permanent error case
+      if (mermaidDiagram === '/* ERROR */') {
+        setMermaidSvg(`<p class="text-red-400 text-center p-4">Error: Could not render diagram.</p>`);
+        return;
+      }
+
       if (mermaidDiagram && !isLoading && typeof mermaid !== 'undefined') {
         try {
           mermaid.initialize({
@@ -126,7 +133,8 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
           setMermaidSvg(svg);
         } catch (error) {
           console.error('Mermaid rendering failed for', personaType, ':', error);
-          setMermaidSvg(`<p class="text-red-400 text-center p-4">Error: Could not render diagram.</p>`);
+          // Trigger the self-correction attempt without showing an immediate error to the user
+          onDiagramError(personaType, mermaidDiagram);
         }
       } else {
         setMermaidSvg(''); // Clear SVG when loading or if there's no diagram
@@ -134,13 +142,13 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
     };
   
     renderMermaid();
-  }, [mermaidDiagram, isLoading, personaType]);
+  }, [mermaidDiagram, isLoading, personaType, onDiagramError]);
 
 
   const handleCopy = () => {
     if (text && !isLoading) {
       let fullContent = text;
-      if (mermaidDiagram) {
+      if (mermaidDiagram && mermaidDiagram !== '/* ERROR */') {
         fullContent += `\n\n## Visual Representation\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
       }
       navigator.clipboard.writeText(fullContent);
@@ -186,7 +194,10 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
 
   const handleExportMarkdown = () => {
     if (!text || isLoading) return;
-    const fullContent = `${text}\n\n## Visual Representation\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
+    let fullContent = text;
+    if (mermaidDiagram && mermaidDiagram !== '/* ERROR */') {
+      fullContent += `\n\n## Visual Representation\n\n\`\`\`mermaid\n${mermaidDiagram}\n\`\`\``;
+    }
     const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -301,6 +312,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                   className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-800/50 text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-slate-700 hover:text-white transition-all duration-200"
                   aria-label="Expand diagram"
                   title="Expand diagram"
+                  disabled={mermaidDiagram === '/* ERROR */'}
                 >
                   <ArrowsPointingOutIcon className="w-5 h-5" />
                 </button>

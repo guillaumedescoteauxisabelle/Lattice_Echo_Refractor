@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PersonaCard } from './components/PersonaCard';
-import { rewriteText, RewriteResult } from './services/geminiService';
+import { rewriteText, correctMermaidDiagram, RewriteResult } from './services/geminiService';
 import { PersonaType } from './types';
 import { DiagramModal } from './components/DiagramModal';
 
@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [selectedSample, setSelectedSample] = useState<string>('');
   const [sampleGroups, setSampleGroups] = useState<SampleGroup[]>([]);
   const [modalData, setModalData] = useState<ModalData | null>(null);
+  const [retryCount, setRetryCount] = useState({[PersonaType.Mia]: 0, [PersonaType.Miette]: 0});
 
   useEffect(() => {
     const fetchSamples = async () => {
@@ -59,6 +60,7 @@ const App: React.FC = () => {
     setError(null);
     setMiaData(null);
     setMietteData(null);
+    setRetryCount({ [PersonaType.Mia]: 0, [PersonaType.Miette]: 0 });
 
     try {
       const [miaResult, mietteResult] = await Promise.all([
@@ -73,6 +75,44 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [originalText, isLoading]);
+
+  const handleDiagramError = useCallback(async (persona: PersonaType, faultyDiagram: string) => {
+    if (retryCount[persona] >= 1) {
+        console.error(`Max retries reached for ${persona}. Cannot fix diagram.`);
+        // Signal a permanent failure to the PersonaCard
+        const finalData = persona === PersonaType.Mia ? miaData : mietteData;
+        if (finalData) {
+            const errorResult = { ...finalData, mermaidDiagram: '/* ERROR */' };
+            if (persona === PersonaType.Mia) setMiaData(errorResult);
+            else setMietteData(errorResult);
+        }
+        return;
+    }
+
+    console.log(`Attempting to correct diagram for ${persona}...`);
+
+    setRetryCount(prev => ({ ...prev, [persona]: prev[persona] + 1 }));
+
+    try {
+        const correctedDiagram = await correctMermaidDiagram(originalText, persona, faultyDiagram);
+
+        if (persona === PersonaType.Mia) {
+            setMiaData(prev => prev ? { ...prev, mermaidDiagram: correctedDiagram } : null);
+        } else {
+            setMietteData(prev => prev ? { ...prev, mermaidDiagram: correctedDiagram } : null);
+        }
+    } catch (err) {
+        console.error(`Failed to correct diagram for ${persona}:`, err);
+         // Signal a permanent failure if correction API call fails
+         const finalData = persona === PersonaType.Mia ? miaData : mietteData;
+         if (finalData) {
+             const errorResult = { ...finalData, mermaidDiagram: '/* ERROR */' };
+             if (persona === PersonaType.Mia) setMiaData(errorResult);
+             else setMietteData(errorResult);
+         }
+    }
+  }, [retryCount, originalText, miaData, mietteData]);
+
 
   const handleSampleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
@@ -176,6 +216,7 @@ const App: React.FC = () => {
                 isLoading={isLoading}
                 color="bg-gradient-to-r from-blue-500 to-cyan-500"
                 onExpandDiagram={handleExpandDiagram}
+                onDiagramError={handleDiagramError}
               />
               <PersonaCard
                 name="Miette"
@@ -186,6 +227,7 @@ const App: React.FC = () => {
                 isLoading={isLoading}
                 color="bg-gradient-to-r from-pink-500 to-rose-500"
                 onExpandDiagram={handleExpandDiagram}
+                onDiagramError={handleDiagramError}
               />
             </div>
           </main>
