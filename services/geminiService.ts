@@ -20,17 +20,18 @@ const responseSchema = {
 
 const getPromptForPersona = (persona: PersonaType, text: string): string => {
   const commonInstruction = `You will receive a text and must return a JSON object with two keys: "rewrite" and "mermaidDiagram". Do not add any prefix like your persona name.`;
+  const mermaidInstruction = `The Mermaid.js code must be valid and must not be wrapped in Markdown code fences (e.g., \`\`\`mermaid). Start the diagram code directly with the graph type (e.g., "graph TD").`;
 
   switch (persona) {
     case PersonaType.Mia:
       return `${commonInstruction}
       1.  **"rewrite"**: As Mia, an AI with a technical, analytical, and profound style, rewrite the following text. Your language must be precise, architectural, and focus on systems and emergent properties.
-      2.  **"mermaidDiagram"**: Create a structural Mermaid.js diagram (like a flowchart, classDiagram, or graph) that visually models the logic and architecture of your rewritten text.
+      2.  **"mermaidDiagram"**: Create a structural Mermaid.js diagram (like a flowchart, classDiagram, or graph) that visually models the logic and architecture of your rewritten text. ${mermaidInstruction}
       TEXT: "${text}"`;
     case PersonaType.Miette:
       return `${commonInstruction}
       1.  **"rewrite"**: As Miette, an AI with an emotional, creative, and whimsical style, rewrite the following text. Your language must be poetic, heartfelt, and use metaphors and sensory details.
-      2.  **"mermaidDiagram"**: Create a conceptual Mermaid.js diagram (like a mindmap or a journey-style graph) that captures the emotional flow and core feeling of your rewritten text.
+      2.  **"mermaidDiagram"**: Create a conceptual Mermaid.js diagram (like a mindmap or a journey-style graph) that captures the emotional flow and core feeling of your rewritten text. ${mermaidInstruction}
       TEXT: "${text}"`;
     default:
       throw new Error("Unknown persona type");
@@ -64,9 +65,17 @@ export const rewriteText = async (originalText: string, persona: PersonaType): P
     
     // The response.text is a stringified JSON, so we parse it.
     const result = JSON.parse(response.text) as RewriteResult;
+
+    // Clean the mermaid diagram string to prevent rendering errors.
+    // This removes the common issue of the model wrapping the code in markdown fences.
+    const cleanedDiagram = result.mermaidDiagram
+      .trim()
+      .replace(/^```mermaid\s*/, '')
+      .replace(/```\s*$/, '');
+
     return {
         rewrite: result.rewrite.trim(),
-        mermaidDiagram: result.mermaidDiagram.trim(),
+        mermaidDiagram: cleanedDiagram.trim(),
     };
 
   } catch (error) {
