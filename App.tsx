@@ -24,6 +24,7 @@ interface ModalData {
     personaType: PersonaType;
     rewrite: string;
     generationId: string;
+    originalText: string;
 }
 
 const App: React.FC = () => {
@@ -231,6 +232,7 @@ const App: React.FC = () => {
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
                 generationId={generationId}
+                originalText={originalText}
               />
               <PersonaCard
                 name="🌸 Miette"
@@ -243,6 +245,7 @@ const App: React.FC = () => {
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
                 generationId={generationId}
+                originalText={originalText}
               />
             </div>
           </main>
@@ -257,6 +260,7 @@ const App: React.FC = () => {
         personaColor={modalData?.color || ''}
         rewrite={modalData?.rewrite || ''}
         generationId={modalData?.generationId || ''}
+        originalText={modalData?.originalText || ''}
       />
     </>
   );

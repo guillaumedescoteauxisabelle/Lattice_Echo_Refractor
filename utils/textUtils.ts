@@ -29,24 +29,18 @@ export const stripMarkdown = (markdown: string): string => {
   return output.trim();
 };
 
-export const createFilename = (personaName: string, markdownContent: string, extension: string, generationId: string): string => {
+export const createFilename = (personaName: string, baseContent: string, extension: string, generationId: string): string => {
   let basename = '';
 
-  if (!markdownContent) {
+  if (!baseContent) {
     basename = 'export';
   } else {
-    // 1. Try to find a markdown h1 or h2 as the title
-    const headingMatch = markdownContent.match(/^#{1,2}\s+(.*)/m);
-    if (headingMatch && headingMatch[1]) {
-      basename = headingMatch[1].trim();
-    } else {
-      // 2. If no heading, take the first few words of the stripped text
-      const strippedText = stripMarkdown(markdownContent);
-      basename = strippedText.split(/\s+/).slice(0, 6).join(' ');
-    }
+    // Take the first few words of the stripped text to create a basename.
+    const strippedText = stripMarkdown(baseContent);
+    basename = strippedText.split(/\s+/).slice(0, 6).join(' ');
   }
 
-  // 3. Sanitize the title for a filename
+  // Sanitize the title for a filename
   const sanitizedBasename = basename
     .trim()
     .toLowerCase()

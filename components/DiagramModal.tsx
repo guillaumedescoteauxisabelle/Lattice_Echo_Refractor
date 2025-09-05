@@ -13,6 +13,7 @@ interface DiagramModalProps {
   personaColor: string;
   rewrite: string;
   generationId: string;
+  originalText: string;
 }
 
 const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
@@ -21,7 +22,7 @@ const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
     </svg>
 );
 
-export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, diagram, personaName, personaIcon, personaColor, rewrite, generationId }) => {
+export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, diagram, personaName, personaIcon, personaColor, rewrite, generationId, originalText }) => {
   const diagramRef = useRef<HTMLDivElement>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
   const [svgContent, setSvgContent] = useState<string>('');
@@ -84,7 +85,7 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
 
   const handleDownload = () => {
     if (!svgContent) return;
-    const filename = createFilename(personaName, rewrite, 'svg', generationId);
+    const filename = createFilename(personaName, originalText, 'svg', generationId);
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
