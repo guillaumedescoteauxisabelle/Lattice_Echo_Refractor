@@ -401,7 +401,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
       <div className="p-6 text-slate-300 leading-relaxed flex-grow relative prose-content">
         {isLoading ? <SkeletonLoader /> : (
             <>
-                <div>
+                <div className="pt-8">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {text || `Rewrite for ${name} will appear here.`}
                     </ReactMarkdown>
