@@ -69,7 +69,7 @@ export const generateResponse = async (history: ChatMessage[], newUserMessage: s
 
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents,
       config: {
         systemInstruction,
