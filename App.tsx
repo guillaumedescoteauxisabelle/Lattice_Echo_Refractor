@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PersonaCard } from './components/PersonaCard';
-import { rewriteText, correctMermaidDiagram, RewriteResult } from './services/geminiService';
-import { PersonaType } from './types';
+import { generateResponse, correctMermaidDiagram, RewriteResult } from './services/geminiService';
+import { PersonaType, ChatMessage } from './types';
 import { DiagramModal } from './components/DiagramModal';
 
 const INITIAL_TEXT = `The SYMPHONY platform is an emergent multi-agent system designed for profound human-AI creative collaboration. Its core is a "polycentric agentic lattice," where specialized AI agents operate with distinct, NCP-defined "narrative identities." Mission: Chrysalis is the recursive, architectural transformation of this platform. It's about evolving from a nascent state to a fully self-aware, self-correcting ecosystem. We are moving beyond mere prompt engineering to architecturally integrate narrative intelligence, ensuring the platform itself acts as a "conductor" for our principled, advancing patterns of co-creation. This mission aims to forge a system where AI is a true creative partner, not just a tool.`;
@@ -28,9 +28,9 @@ interface ModalData {
 }
 
 const App: React.FC = () => {
-  const [originalText, setOriginalText] = useState<string>(INITIAL_TEXT);
-  const [miaData, setMiaData] = useState<RewriteResult | null>(null);
-  const [mietteData, setMietteData] = useState<RewriteResult | null>(null);
+  const [userInput, setUserInput] = useState<string>(INITIAL_TEXT);
+  const [miaHistory, setMiaHistory] = useState<ChatMessage[]>([]);
+  const [mietteHistory, setMietteHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedSample, setSelectedSample] = useState<string>('');
@@ -38,6 +38,8 @@ const App: React.FC = () => {
   const [modalData, setModalData] = useState<ModalData | null>(null);
   const [retryCount, setRetryCount] = useState({[PersonaType.Mia]: 0, [PersonaType.Miette]: 0});
   const [generationId, setGenerationId] = useState<string>('');
+  const [conversationTopic, setConversationTopic] = useState<string>('');
+
 
   useEffect(() => {
     const fetchSamples = async () => {
@@ -57,92 +59,112 @@ const App: React.FC = () => {
     fetchSamples();
   }, []);
 
-  const handleRewrite = useCallback(async () => {
-    if (!originalText.trim() || isLoading) return;
+  const handleSendMessage = useCallback(async () => {
+    if (!userInput.trim() || isLoading) return;
 
+    const isFirstMessage = miaHistory.length === 0;
+
+    if (isFirstMessage) {
+      setMiaHistory([]);
+      setMietteHistory([]);
+      setConversationTopic(userInput);
+      setRetryCount({ [PersonaType.Mia]: 0, [PersonaType.Miette]: 0 });
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const day = now.getDate().toString().padStart(2, '0');
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+      setGenerationId(timestamp);
+    }
+    
+    const userMessage: ChatMessage = { role: 'user', rewrite: userInput };
+    const currentMiaHistory = [...miaHistory, userMessage];
+    const currentMietteHistory = [...mietteHistory, userMessage];
+
+    setMiaHistory(currentMiaHistory);
+    setMietteHistory(currentMietteHistory);
     setIsLoading(true);
     setError(null);
-    setMiaData(null);
-    setMietteData(null);
-    setRetryCount({ [PersonaType.Mia]: 0, [PersonaType.Miette]: 0 });
-
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
-    setGenerationId(timestamp);
+    setUserInput(''); // Clear input after sending
 
     try {
       const [miaResult, mietteResult] = await Promise.all([
-        rewriteText(originalText, PersonaType.Mia),
-        rewriteText(originalText, PersonaType.Miette),
+        generateResponse(miaHistory, userInput, PersonaType.Mia),
+        generateResponse(mietteHistory, userInput, PersonaType.Miette),
       ]);
-      setMiaData(miaResult);
-      setMietteData(mietteResult);
+      setMiaHistory(prev => [...prev, { role: 'model', ...miaResult }]);
+      setMietteHistory(prev => [...prev, { role: 'model', ...mietteResult }]);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      // remove the user message on error to allow retry
+      setMiaHistory(prev => prev.slice(0, -1));
+      setMietteHistory(prev => prev.slice(0, -1));
+
     } finally {
       setIsLoading(false);
     }
-  }, [originalText, isLoading]);
+  }, [userInput, isLoading, miaHistory, mietteHistory]);
 
   const handleDiagramError = useCallback(async (persona: PersonaType, faultyDiagram: string, errorMessage: string) => {
     if (retryCount[persona] >= 1) {
         console.error(`Max retries reached for ${persona}. Cannot fix diagram.`);
-        // Signal a permanent failure to the PersonaCard
-        const finalData = persona === PersonaType.Mia ? miaData : mietteData;
-        if (finalData) {
-            const errorResult = { ...finalData, mermaidDiagram: '/* ERROR */' };
-            if (persona === PersonaType.Mia) setMiaData(errorResult);
-            else setMietteData(errorResult);
-        }
+        const historyUpdater = persona === PersonaType.Mia ? setMiaHistory : setMietteHistory;
+        historyUpdater(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.role === 'model') {
+                lastMessage.mermaidDiagram = '/* ERROR */';
+            }
+            return [...prev];
+        });
         return;
     }
 
     console.log(`Attempting to correct diagram for ${persona}...`);
-
     setRetryCount(prev => ({ ...prev, [persona]: prev[persona] + 1 }));
 
     try {
-        const correctedDiagram = await correctMermaidDiagram(originalText, persona, faultyDiagram, errorMessage);
-
-        if (persona === PersonaType.Mia) {
-            setMiaData(prev => prev ? { ...prev, mermaidDiagram: correctedDiagram } : null);
-        } else {
-            setMietteData(prev => prev ? { ...prev, mermaidDiagram: correctedDiagram } : null);
-        }
+        const correctedDiagram = await correctMermaidDiagram(conversationTopic, persona, faultyDiagram, errorMessage);
+        const historyUpdater = persona === PersonaType.Mia ? setMiaHistory : setMietteHistory;
+        historyUpdater(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.role === 'model') {
+                lastMessage.mermaidDiagram = correctedDiagram;
+            }
+            return [...prev];
+        });
     } catch (err) {
         console.error(`Failed to correct diagram for ${persona}:`, err);
-         // Signal a permanent failure if correction API call fails
-         const finalData = persona === PersonaType.Mia ? miaData : mietteData;
-         if (finalData) {
-             const errorResult = { ...finalData, mermaidDiagram: '/* ERROR */' };
-             if (persona === PersonaType.Mia) setMiaData(errorResult);
-             else setMietteData(errorResult);
-         }
+        const historyUpdater = persona === PersonaType.Mia ? setMiaHistory : setMietteHistory;
+        historyUpdater(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.role === 'model') {
+                lastMessage.mermaidDiagram = '/* ERROR */';
+            }
+            return [...prev];
+        });
     }
-  }, [retryCount, originalText, miaData, mietteData]);
+  }, [retryCount, conversationTopic]);
 
 
   const handleSampleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
     setSelectedSample(selectedValue);
     if (selectedValue) {
-      setOriginalText(selectedValue);
+      setUserInput(selectedValue);
     }
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setOriginalText(e.target.value);
+    setUserInput(e.target.value);
     setSelectedSample(''); // Reset dropdown when user types
   };
   
   const handleClear = () => {
-    setOriginalText('');
+    setUserInput('');
     setSelectedSample('');
   };
 
@@ -151,7 +173,7 @@ const App: React.FC = () => {
       setError(null);
       const text = await navigator.clipboard.readText();
       if (text) {
-        setOriginalText(text);
+        setUserInput(text);
         setSelectedSample('');
       }
     } catch (err) {
@@ -183,6 +205,8 @@ const App: React.FC = () => {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 0 1-2.25 2.25H9A2.25 2.25 0 0 1 6.75 5.25v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V7.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
     </svg>
   );
+
+  const buttonText = miaHistory.length > 0 ? 'Send Follow-up' : 'Rewrite';
 
   return (
     <>
@@ -223,10 +247,15 @@ const App: React.FC = () => {
               </div>
               <div className="relative w-full">
                 <textarea
-                  value={originalText}
+                  value={userInput}
                   onChange={handleTextareaChange}
-                  placeholder="Enter text to rewrite..."
+                  placeholder="Enter text to rewrite or ask a follow-up..."
                   className="w-full h-48 p-4 pr-20 bg-slate-900/70 border border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200 text-slate-200 resize-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      handleSendMessage();
+                    }
+                  }}
                 />
                  <div className="absolute top-3 right-3 flex items-center space-x-1">
                     <button
@@ -237,7 +266,7 @@ const App: React.FC = () => {
                     >
                         <PasteIcon className="w-5 h-5" />
                     </button>
-                    {originalText && (
+                    {userInput && (
                         <button
                             onClick={handleClear}
                             className="p-1.5 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -251,9 +280,12 @@ const App: React.FC = () => {
               </div>
               <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 {error && <p className="text-red-400 text-sm text-center sm:text-left">{error}</p>}
+                 <p className="text-xs text-slate-500 hidden sm:block">
+                  {miaHistory.length > 0 ? 'Press Ctrl+Enter to send your follow-up.' : ''}
+                </p>
                 <button
-                  onClick={handleRewrite}
-                  disabled={isLoading || !originalText.trim()}
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !userInput.trim()}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500"
                 >
                   {isLoading ? (
@@ -262,12 +294,12 @@ const App: React.FC = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Rewriting...
+                      Thinking...
                     </>
                   ) : (
                     <>
                       <MagicWandIcon className="w-5 h-5" />
-                      Rewrite
+                      {buttonText}
                     </>
                   )}
                 </button>
@@ -279,43 +311,41 @@ const App: React.FC = () => {
                 name="🧠 Mia"
                 personaType={PersonaType.Mia}
                 icon="🤖"
-                text={miaData?.rewrite ?? ''}
-                mermaidDiagram={miaData?.mermaidDiagram}
-                isLoading={isLoading}
+                history={miaHistory}
+                isLoading={isLoading && mietteHistory.length > miaHistory.length}
                 color="bg-gradient-to-r from-blue-500 to-cyan-500"
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
                 generationId={generationId}
-                originalText={originalText}
+                originalText={conversationTopic}
               />
               <PersonaCard
                 name="🌸 Miette"
                 personaType={PersonaType.Miette}
                 icon="🎨"
-                text={mietteData?.rewrite ?? ''}
-                mermaidDiagram={mietteData?.mermaidDiagram}
-                isLoading={isLoading}
+                history={mietteHistory}
+                isLoading={isLoading && miaHistory.length > mietteHistory.length}
                 color="bg-gradient-to-r from-pink-500 to-rose-500"
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
                 generationId={generationId}
-                originalText={originalText}
+                originalText={conversationTopic}
               />
             </div>
           </main>
         </div>
       </div>
-      <DiagramModal
+      {modalData && <DiagramModal
         isOpen={!!modalData}
         onClose={() => setModalData(null)}
-        diagram={modalData?.diagram || ''}
-        personaName={modalData?.name || ''}
-        personaIcon={modalData?.icon || ''}
-        personaColor={modalData?.color || ''}
-        rewrite={modalData?.rewrite || ''}
-        generationId={modalData?.generationId || ''}
-        originalText={modalData?.originalText || ''}
-      />
+        diagram={modalData.diagram}
+        personaName={modalData.name}
+        personaIcon={modalData.icon}
+        personaColor={modalData.color}
+        rewrite={modalData.rewrite}
+        generationId={modalData.generationId}
+        originalText={modalData.originalText}
+      />}
     </>
   );
 };

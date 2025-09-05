@@ -33,11 +33,11 @@ This phase enhanced the user experience by adding multimedia output and more rob
 - `[x]` Dynamic, content-aware filenaming for all exported files (Markdown, audio, SVG).
 - `[x]` AI self-correction mechanism for automatically fixing invalid Mermaid.js syntax.
 
-## Phase 3: UX & Performance Refinements (Planned)
+## Phase 3: UX & Performance Refinements (In Progress)
 This phase will focus on improving the user experience, performance, and accessibility.
 
+- `[x]` **Conversation History**: Added a feature to maintain a conversation history for each persona. This allows users to have iterative conversations, ask follow-up questions, and refine the rewritten text over multiple turns.
 - `[*]` **Streaming Responses**: Implement streaming for the `rewrite` text to show results as they are generated, improving perceived performance and user engagement.
-- `[ ]` **Conversation History**: Add a feature to maintain a conversation history for each persona. This will allow users to have iterative conversations, ask follow-up questions, and refine the rewritten text over multiple turns. State management will be required to store and display the history for Mia and Miette.
 - `[ ]` **UI/UX Enhancements**:
     - `[ ]` Animate transitions between states (e.g., loading, content display) more smoothly.
     - `[ ]` Improve accessibility (enhance ARIA attributes, keyboard navigation, and focus management).
