@@ -164,7 +164,7 @@ const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
 
 const MusicalNoteIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9c0-1.105 2.239-2 5-2 2.761 0 5 1.105 5 2v4.5M9 9v3.75m-3.75-3.75h10.5a2.25 2.25 0 0 1 2.25 2.25v3.75a2.25 2.25 0 0 1-2.25 2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V11.25a2.25 2.25 0 0 1 2.25-2.25h1.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9c0-1.105 2.239-2 5-2 2.761 0 5 1.105 5 2v4.5M9 9v3.75m-3.75-3.75h10.5a2.25 2.25 0 0 1 2.25 2.25v3.75a2.25 2.25 0 0 1-2.25-2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V11.25a2.25 2.25 0 0 1 2.25-2.25h1.5" />
     </svg>
 );
 
@@ -394,19 +394,65 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
 
   return (
     <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-lg overflow-hidden h-full flex flex-col">
-      <div className={`flex items-center p-4 border-b border-slate-700 ${color}`}>
-        <span className="text-2xl mr-3">{icon}</span>
-        <h3 className="text-lg font-bold text-white tracking-wide">{name}</h3>
+      <div className={`flex items-center justify-between p-4 border-b border-slate-700 ${color}`}>
+        <div className="flex items-center">
+          <span className="text-2xl mr-3">{icon}</span>
+          <h3 className="text-lg font-bold text-white tracking-wide">{name}</h3>
+        </div>
+        {!isLoading && text && (
+            <div className="flex items-center space-x-1 bg-black/20 p-1 rounded-full">
+                <button
+                    onClick={handleSpeak}
+                    className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label={isSpeaking ? "Stop speaking" : "Listen to text"}
+                    title={isSpeaking ? "Stop speaking" : "Listen to text"}
+                    disabled={voices.length === 0 || isGeneratingAudio}
+                >
+                    {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5" />}
+                </button>
+                <button
+                    onClick={handleCopy}
+                    className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200"
+                    aria-label="Copy text and diagram"
+                    title="Copy text and diagram"
+                >
+                    {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5" />}
+                </button>
+                <button
+                    onClick={handleExportMarkdown}
+                    className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Export as Markdown"
+                    title="Export as Markdown"
+                    disabled={isLoading || !text}
+                >
+                    <ArrowDownTrayIcon className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={handleExportAudioClick}
+                    className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Export as Audio"
+                    title="Export as Audio"
+                    disabled={isLoading || !text || isSpeaking || isGeneratingAudio || voices.length === 0}
+                >
+                    {isGeneratingAudio ? (
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    ) : (
+                        <MusicalNoteIcon className="w-5 h-5" />
+                    )}
+                </button>
+            </div>
+        )}
       </div>
       <div className="p-6 text-slate-300 leading-relaxed flex-grow relative prose-content">
         {isLoading ? <SkeletonLoader /> : (
             <>
-                <div className="pt-8">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {text || `Rewrite for ${name} will appear here.`}
-                    </ReactMarkdown>
-                </div>
-
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {text || `Rewrite for ${name} will appear here.`}
+                </ReactMarkdown>
+                
                 {!isLoading && mermaidSvg && (
                     <div className="relative group mt-6">
                         <div 
@@ -425,51 +471,6 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                     </div>
                 )}
             </>
-        )}
-        {!isLoading && text && (
-            <div className="absolute top-4 right-4 flex items-center space-x-2">
-                <button
-                    onClick={handleSpeak}
-                    className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50"
-                    aria-label={isSpeaking ? "Stop speaking" : "Listen to text"}
-                    disabled={voices.length === 0 || isGeneratingAudio}
-                >
-                    {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5 text-slate-400" />}
-                </button>
-                <button
-                    onClick={handleCopy}
-                    className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200"
-                    aria-label="Copy text and diagram"
-                    title="Copy text and diagram"
-                >
-                    {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5 text-slate-400" />}
-                </button>
-                <button
-                    onClick={handleExportMarkdown}
-                    className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Export as Markdown"
-                    title="Export as Markdown"
-                    disabled={isLoading || !text}
-                >
-                    <ArrowDownTrayIcon className="w-5 h-5 text-slate-400" />
-                </button>
-                <button
-                    onClick={handleExportAudioClick}
-                    className="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-purple-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Export as Audio"
-                    title="Export as Audio"
-                    disabled={isLoading || !text || isSpeaking || isGeneratingAudio || voices.length === 0}
-                >
-                    {isGeneratingAudio ? (
-                        <svg className="animate-spin h-5 w-5 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    ) : (
-                        <MusicalNoteIcon className="w-5 h-5 text-slate-400" />
-                    )}
-                </button>
-            </div>
         )}
       </div>
       <AudioExportInfoModal 
