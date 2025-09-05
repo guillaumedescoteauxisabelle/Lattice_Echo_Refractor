@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PersonaCard } from './components/PersonaCard';
-import { generateResponse, correctMermaidDiagram, RewriteResult } from './services/geminiService';
+import { generateResponseStream, correctMermaidDiagram } from './services/geminiService';
 import { PersonaType, ChatMessage } from './types';
 import { DiagramModal } from './components/DiagramModal';
 
@@ -67,9 +67,10 @@ const App: React.FC = () => {
 
   const handleSendMessage = useCallback(async () => {
     if (!userInput.trim() || isLoading) return;
-
+  
     const isFirstMessage = miaHistory.length === 0;
-
+    const originalHistories = { mia: miaHistory, miette: mietteHistory };
+  
     if (isFirstMessage) {
       setMiaHistory([]);
       setMietteHistory([]);
@@ -85,31 +86,78 @@ const App: React.FC = () => {
       const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
       setGenerationId(timestamp);
     }
-    
+  
     const userMessage: ChatMessage = { role: 'user', rewrite: userInput };
-    const currentMiaHistory = [...miaHistory, userMessage];
-    const currentMietteHistory = [...mietteHistory, userMessage];
-
-    setMiaHistory(currentMiaHistory);
-    setMietteHistory(currentMietteHistory);
+    const historyForMiaAPI = [...(isFirstMessage ? [] : miaHistory), userMessage];
+    const historyForMietteAPI = [...(isFirstMessage ? [] : mietteHistory), userMessage];
+  
+    setMiaHistory(historyForMiaAPI);
+    setMietteHistory(historyForMietteAPI);
     setIsLoading(true);
     setError(null);
-    setUserInput(''); // Clear input after sending
-
+    setUserInput('');
+  
+    // Add empty placeholders for streaming
+    setMiaHistory(prev => [...prev, { role: 'model', rewrite: '', mermaidDiagram: '' }]);
+    setMietteHistory(prev => [...prev, { role: 'model', rewrite: '', mermaidDiagram: '' }]);
+  
+    const processStream = async (persona: PersonaType, historyForAPI: ChatMessage[]) => {
+      const setHistory = persona === PersonaType.Mia ? setMiaHistory : setMietteHistory;
+      let fullText = '';
+  
+      try {
+        const stream = generateResponseStream(historyForAPI, persona);
+  
+        for await (const chunk of stream) {
+          fullText += chunk;
+          const parts = fullText.split('_||_');
+          const rewrite = parts[0] || '';
+          const diagram = parts[1] || '';
+  
+          setHistory(prev => {
+            const newHistory = [...prev];
+            const lastMessage = newHistory[newHistory.length - 1];
+            if (lastMessage && lastMessage.role === 'model') {
+              lastMessage.rewrite = rewrite;
+              lastMessage.mermaidDiagram = diagram;
+            }
+            return newHistory;
+          });
+        }
+  
+        // Final cleanup
+        const parts = fullText.split('_||_');
+        const rewrite = (parts[0] || '').trim();
+        const diagram = (parts[1] || '').trim()
+          .replace(/^```mermaid\s*/, '')
+          .replace(/```\s*$/, '');
+  
+        setHistory(prev => {
+          const newHistory = [...prev];
+          const lastMessage = newHistory[newHistory.length - 1];
+          if (lastMessage && lastMessage.role === 'model') {
+            lastMessage.rewrite = rewrite;
+            lastMessage.mermaidDiagram = diagram;
+          }
+          return newHistory;
+        });
+      } catch (err) {
+        console.error(`Error streaming for ${persona}:`, err);
+        // Let the main catch block handle UI state
+        throw err;
+      }
+    };
+  
     try {
-      const [miaResult, mietteResult] = await Promise.all([
-        generateResponse(miaHistory, userInput, PersonaType.Mia),
-        generateResponse(mietteHistory, userInput, PersonaType.Miette),
+      await Promise.all([
+        processStream(PersonaType.Mia, historyForMiaAPI),
+        processStream(PersonaType.Miette, historyForMietteAPI),
       ]);
-      setMiaHistory(prev => [...prev, { role: 'model', ...miaResult }]);
-      setMietteHistory(prev => [...prev, { role: 'model', ...mietteResult }]);
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-      // remove the user message on error to allow retry
-      setMiaHistory(prev => prev.slice(0, -1));
-      setMietteHistory(prev => prev.slice(0, -1));
-
+      // Revert to the state before this send action
+      setMiaHistory(originalHistories.mia);
+      setMietteHistory(originalHistories.miette);
     } finally {
       setIsLoading(false);
     }
@@ -318,7 +366,7 @@ const App: React.FC = () => {
                 personaType={PersonaType.Mia}
                 icon="🤖"
                 history={miaHistory}
-                isLoading={isLoading && mietteHistory.length > miaHistory.length}
+                isLoading={isLoading && !miaHistory.some(m => m.role === 'model' && m.rewrite)}
                 color="bg-gradient-to-r from-blue-500 to-cyan-500"
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}
@@ -330,7 +378,7 @@ const App: React.FC = () => {
                 personaType={PersonaType.Miette}
                 icon="🎨"
                 history={mietteHistory}
-                isLoading={isLoading && miaHistory.length > mietteHistory.length}
+                isLoading={isLoading && !mietteHistory.some(m => m.role === 'model' && m.rewrite)}
                 color="bg-gradient-to-r from-pink-500 to-rose-500"
                 onExpandDiagram={handleExpandDiagram}
                 onDiagramError={handleDiagramError}

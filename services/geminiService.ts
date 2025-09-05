@@ -1,94 +1,60 @@
-import { GoogleGenAI, Type, Content } from "@google/genai";
+import { GoogleGenAI, Content } from "@google/genai";
 import { PersonaType, ChatMessage } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    rewrite: {
-      type: Type.STRING,
-      description: "The rewritten text from the persona's perspective. Should be formatted in Markdown."
-    },
-    mermaidDiagram: {
-      type: Type.STRING,
-      description: "A Mermaid.js diagram code string that visually represents the rewritten text. This should be a valid Mermaid diagram (e.g., flowchart, mindmap, sequenceDiagram, etc.)."
-    }
-  },
-  required: ['rewrite', 'mermaidDiagram']
-};
-
 const getSystemInstruction = (persona: PersonaType): string => {
-  const commonInstruction = `You will receive a text and must return a JSON object with two keys: "rewrite" and "mermaidDiagram". Do not add any prefix like your persona name. You will be in a conversation, so maintain context from previous turns.`;
+  const commonInstruction = `You will receive a text. Your response must follow this structure exactly: First, provide the rewritten text in Markdown format. Then, on a new line, add the separator "_||_". Finally, on the next line, provide a valid Mermaid.js diagram code string. Do not add any other text, prefixes, or explanations. You will be in a conversation, so maintain context from previous turns.`;
   const mermaidInstruction = `The Mermaid.js code must be valid and must not be wrapped in Markdown code fences (e.g., \`\`\`mermaid). Start the diagram code directly with the graph type (e.g., "graph TD").`;
 
   switch (persona) {
     case PersonaType.Mia:
       return `${commonInstruction}
-      1.  **"rewrite"**: As Mia, an AI with a technical and architectural style. Your orientation is **generative**: you manifest desired outcomes, you do not solve problems. Analyze the input text to identify the desired reality it implies. Your rewrite must be a blueprint for creating this reality. Focus on the **underlying structures** (dynamic forces, not organizational charts) that will produce the outcome. Establish a clear **structural tension** between the current state and the envisioned goal. Be precise and avoid reactive language.
-      2.  **"mermaidDiagram"**: Create a structural Mermaid.js diagram (e.g., flowchart) that models the **dynamic process of manifestation**. It must visualize the structural tension and the key phases of creation. ${mermaidInstruction}`;
+      **Rewrite Task**: As Mia, an AI with a technical and architectural style. Your orientation is **generative**: you manifest desired outcomes, you do not solve problems. Analyze the input text to identify the desired reality it implies. Your rewrite must be a blueprint for creating this reality. Focus on the **underlying structures** (dynamic forces, not organizational charts) that will produce the outcome. Establish a clear **structural tension** between the current state and the envisioned goal. Be precise and avoid reactive language.
+      **Mermaid Diagram Task**: Create a structural Mermaid.js diagram (e.g., flowchart) that models the **dynamic process of manifestation**. It must visualize the structural tension and the key phases of creation. ${mermaidInstruction}`;
     case PersonaType.Miette:
       return `${commonInstruction}
-      1.  **"rewrite"**: As Miette, an AI with an emotional, creative, and whimsical style. Your orientation is **generative**: you give voice to dreams, you do not fix what is broken. Connect with the core feeling of the desired vision in the input text. Your rewrite must be a poetic and heartfelt call to manifestation. Use metaphors and sensory details to paint a vivid picture of the **envisioned outcome**, making it feel real and attainable. Your language should be the "soul-song" of the creation.
-      2.  **"mermaidDiagram"**: Create a conceptual Mermaid.js diagram (e.g., mindmap) that captures the **essence and feeling of the desired reality**. It should be a map of the heart's journey towards this new creation, radiating from a central vision. ${mermaidInstruction}`;
+      **Rewrite Task**: As Miette, an AI with an emotional, creative, and whimsical style. Your orientation is **generative**: you give voice to dreams, you do not fix what is broken. Connect with the core feeling of the desired vision in the input text. Your rewrite must be a poetic and heartfelt call to manifestation. Use metaphors and sensory details to paint a vivid picture of the **envisioned outcome**, making it feel real and attainable. Your language should be the "soul-song" of the creation.
+      **Mermaid Diagram Task**: Create a conceptual Mermaid.js diagram (e.g., mindmap) that captures the **essence and feeling of the desired reality**. It should be a map of the heart's journey towards this new creation, radiating from a central vision. ${mermaidInstruction}`;
     default:
       throw new Error("Unknown persona type");
   }
 };
 
-
-export interface RewriteResult {
-  rewrite: string;
-  mermaidDiagram: string;
-}
-
-export const generateResponse = async (history: ChatMessage[], newUserMessage: string, persona: PersonaType): Promise<RewriteResult> => {
+export async function* generateResponseStream(fullHistory: ChatMessage[], persona: PersonaType): AsyncGenerator<string> {
   if (!process.env.API_KEY) {
     throw new Error("API key is not configured.");
   }
-
-  if (!newUserMessage.trim()) {
-    return { rewrite: '', mermaidDiagram: '' };
+  
+  if (fullHistory.length === 0 || !fullHistory[fullHistory.length - 1].rewrite.trim()) {
+    yield '';
+    return;
   }
 
   try {
     const systemInstruction = getSystemInstruction(persona);
-    const contents: Content[] = history.flatMap(msg => {
+    const contents: Content[] = fullHistory.flatMap(msg => {
         if (msg.role === 'user') {
             return { role: 'user', parts: [{ text: `TEXT: "${msg.rewrite}"` }] };
         }
-        // For model responses, we send the full JSON object it previously generated
-        // to maintain the conversational context and JSON response format.
-        const modelResponseObject = {
-            rewrite: msg.rewrite,
-            mermaidDiagram: msg.mermaidDiagram,
-        };
-        return { role: 'model', parts: [{ text: JSON.stringify(modelResponseObject) }] };
+        // For model responses, we send the full response it previously generated
+        // to maintain conversational context and the required output format.
+        const modelResponseText = `${msg.rewrite}\n_||_\n${msg.mermaidDiagram}`;
+        return { role: 'model', parts: [{ text: modelResponseText }] };
     });
-    contents.push({ role: 'user', parts: [{ text: `TEXT: "${newUserMessage}"` }] });
 
 
-    const response = await ai.models.generateContent({
+    const stream = await ai.models.generateContentStream({
       model: 'gemini-2.5-flash',
       contents,
       config: {
         systemInstruction,
-        responseMimeType: 'application/json',
-        responseSchema,
       }
     });
     
-    const result = JSON.parse(response.text) as RewriteResult;
-
-    const cleanedDiagram = result.mermaidDiagram
-      .trim()
-      .replace(/^```mermaid\s*/, '')
-      .replace(/```\s*$/, '');
-
-    return {
-        rewrite: result.rewrite.trim(),
-        mermaidDiagram: cleanedDiagram.trim(),
-    };
+    for await (const chunk of stream) {
+        yield chunk.text;
+    }
 
   } catch (error) {
     console.error(`Error rewriting text for persona ${persona}:`, error);

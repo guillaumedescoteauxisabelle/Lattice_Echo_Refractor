@@ -25,7 +25,6 @@ As a key, early realization of **Mission: Chrysalis's** core goals, `Lattice_Ech
 *   **Text-to-Speech Engine**: Listen to each rewritten text spoken in a persona-specific voice, emphasizing the "voice" and "echo" aspects of the agents.
 *   **Multi-Format Export**:
     *   **Markdown**: Download the rewritten text as a `.md` file.
-    *   **Audio**: Capture the synthesized speech as a `.webm` audio file.
     *   **SVG Diagram**: Download the generated diagram as a scalable `.svg` file.
 *   **Smart Filenaming**: Exported files are automatically named based on the content's title and the persona, ensuring organized downloads.
 
@@ -48,7 +47,6 @@ This application is built with a modern, performant, and AI-native stack:
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/) for a sleek, responsive, and utility-first design.
 *   **Diagramming**: [Mermaid.js](https://mermaid-js.github.io/mermaid/) for dynamically rendering text-based diagrams.
 *   **Speech Synthesis**: The browser's native [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) for dynamic text-to-speech.
-*   **Audio Capture**: The [MediaDevices API (`getDisplayMedia`)](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) is cleverly used to capture tab audio for the export feature.
 
 ## 🚀 How to Use This App
 
@@ -62,7 +60,7 @@ This application runs directly in a browser-based environment like AI Studio.
 4.  **Interact**: Use the icons on each card to:
     *   **Listen** to the text.
     *   **Copy** the text and diagram code.
-    *   **Export** the content as Markdown or Audio.
+    *   **Export** the content as Markdown.
     *   **Expand** the diagram for a larger view.
 5.  **Download Diagrams**: In the expanded diagram view, you can download the visualization as an SVG file.
 
