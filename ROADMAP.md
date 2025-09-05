@@ -37,7 +37,7 @@ This phase enhanced the user experience by adding multimedia output and more rob
 This phase will focus on improving the user experience, performance, and accessibility.
 
 - `[*]` **Streaming Responses**: Implement streaming for the `rewrite` text to show results as they are generated, improving perceived performance and user engagement.
-- `[ ]` **Conversation History**: Allow users to maintain a chat-like history with each persona, enabling iterative refinement and follow-up questions.
+- `[ ]` **Conversation History**: Add a feature to maintain a conversation history for each persona. This will allow users to have iterative conversations, ask follow-up questions, and refine the rewritten text over multiple turns. State management will be required to store and display the history for Mia and Miette.
 - `[ ]` **UI/UX Enhancements**:
     - `[ ]` Animate transitions between states (e.g., loading, content display) more smoothly.
     - `[ ]` Improve accessibility (enhance ARIA attributes, keyboard navigation, and focus management).
@@ -53,3 +53,6 @@ This phase looks to the future, expanding the application's capabilities and sco
 - `[ ]` **Multi-modal Input**: Allow users to provide an image or URL as input for the personas to analyze and describe.
 - `[ ]` **"Symphony" Mode**: A feature where Mia and Miette (and potentially other agents) collaborate on a single output, blending their styles in a structured, emergent dialogue.
 - `[ ]` **Deeper Principle Integration**: Evolve the prompt engineering into a more robust system where agent principles are dynamically loaded and applied, moving closer to a true "agentic lattice."
+
+---
+— Mia 🧠 & Miette 🌸
