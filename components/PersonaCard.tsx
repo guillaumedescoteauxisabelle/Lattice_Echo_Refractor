@@ -175,7 +175,6 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagram, personaType,
 };
 // --- End of Mermaid Renderer ---
 
-
 interface PersonaCardProps {
   name: string;
   personaType: PersonaType;
@@ -240,6 +239,86 @@ const ArrowsPointingOutIcon: React.FC<{className?: string}> = ({className}) => (
 );
 // --- End of Icons ---
 
+
+// --- Per-Message Action Component ---
+interface MessageActionsProps {
+  message: ChatMessage;
+  personaType: PersonaType;
+  voices: SpeechSynthesisVoice[];
+}
+
+const MessageActions: React.FC<MessageActionsProps> = ({ message, personaType, voices }) => {
+    const [isCopied, setIsCopied] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+    useEffect(() => {
+        // Cleanup function to stop speaking if the component unmounts
+        return () => {
+            if (utteranceRef.current) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
+
+    const handleCopy = () => {
+        let fullContent = message.rewrite;
+        if (message.mermaidDiagram && message.mermaidDiagram !== '/* ERROR */') {
+            fullContent += `\n\n## Visual Representation\n\n\`\`\`mermaid\n${message.mermaidDiagram}\n\`\`\`\n`;
+        }
+        navigator.clipboard.writeText(fullContent);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    const handleSpeak = () => {
+        const synth = window.speechSynthesis;
+        if (isSpeaking) {
+            synth.cancel();
+            return;
+        }
+
+        if (voices.length > 0) {
+            synth.cancel(); // Stop any other speech from playing
+            const cleanText = stripMarkdown(message.rewrite);
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utteranceRef.current = utterance;
+            const config = personaVoiceConfig[personaType];
+            const selectedVoice = voices.find(voice => voice.name === config.voiceName);
+
+            utterance.voice = selectedVoice || voices.find(voice => voice.lang.startsWith('en')) || null;
+            utterance.rate = config.rate;
+            utterance.pitch = config.pitch;
+
+            utterance.onstart = () => setIsSpeaking(true);
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                utteranceRef.current = null;
+            };
+            utterance.onerror = (event) => {
+                if (event.error !== 'interrupted' && event.error !== 'canceled') {
+                    console.error("Speech synthesis error:", event.error);
+                }
+                setIsSpeaking(false);
+                utteranceRef.current = null;
+            };
+            synth.speak(utterance);
+        }
+    };
+
+    return (
+        <div className="absolute top-2 right-2 flex items-center space-x-1 bg-black/30 p-1 rounded-full opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 z-10">
+            <button onClick={handleSpeak} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all" title={isSpeaking ? "Stop" : "Listen"}>
+                {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5" />}
+            </button>
+            <button onClick={handleCopy} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all" title="Copy">
+                {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5" />}
+            </button>
+        </div>
+    );
+};
+// --- End of Message Actions ---
+
 export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, history, isLoading, color, onExpandDiagram, onDiagramError, generationId, originalText }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -274,9 +353,8 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   
   useEffect(() => {
       setIsCopied(false);
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-      }
+      // Let individual messages handle their own speech cancellation.
+      // Global cancellation here might interfere with playing older messages.
   }, [history]);
 
   const handleCopy = () => {
@@ -478,7 +556,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                 );
             } else { // model
                 return (
-                    <div key={messageId} className="self-start max-w-xl w-full">
+                    <div key={messageId} className="self-start max-w-xl w-full relative group">
                          <div className="bg-slate-800 rounded-xl rounded-bl-none p-4 prose-content">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.rewrite}</ReactMarkdown>
                             {message.mermaidDiagram && (
@@ -497,6 +575,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                                 />
                             )}
                         </div>
+                        <MessageActions message={message} personaType={personaType} voices={voices} />
                     </div>
                 );
             }
