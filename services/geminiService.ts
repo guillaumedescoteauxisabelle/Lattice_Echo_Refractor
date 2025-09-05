@@ -55,7 +55,7 @@ export const rewriteText = async (originalText: string, persona: PersonaType): P
   try {
     const prompt = getPromptForPersona(persona, originalText);
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
