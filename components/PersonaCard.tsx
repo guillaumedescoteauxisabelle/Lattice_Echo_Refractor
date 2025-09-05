@@ -126,8 +126,7 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagram, personaType,
             }
             if (diagram && typeof mermaid !== 'undefined') {
                 try {
-                    mermaid.initialize({
-                        startOnLoad: false,
+                    const themeConfig = {
                         theme: 'dark',
                         fontFamily: 'Inter, sans-serif',
                         themeVariables: {
@@ -138,9 +137,11 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagram, personaType,
                             textColor: '#cbd5e1',
                             nodeBorder: personaType === PersonaType.Mia ? '#38bdf8' : '#f472b6',
                         }
-                    });
+                    };
+                    const diagramWithConfig = `%%{init: ${JSON.stringify(themeConfig)}}%%\n${diagram}`;
+                    
                     const diagramId = `mermaid-${personaType}-${messageId}`;
-                    const { svg } = await mermaid.render(diagramId, diagram);
+                    const { svg } = await mermaid.render(diagramId, diagramWithConfig);
                     setSvg(svg);
                 } catch (error) {
                     console.error(`Mermaid rendering failed for ${personaType}:`, error);
@@ -273,6 +274,8 @@ const UserMessageActions: React.FC<UserMessageActionsProps> = ({ message, voices
         const synth = window.speechSynthesis;
         if (isSpeaking) {
             synth.cancel();
+            setIsSpeaking(false);
+            utteranceRef.current = null;
             return;
         }
 
@@ -367,6 +370,8 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, personaType, v
         const synth = window.speechSynthesis;
         if (isSpeaking) {
             synth.cancel();
+            setIsSpeaking(false);
+            utteranceRef.current = null;
             return;
         }
 

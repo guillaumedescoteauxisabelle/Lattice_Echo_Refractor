@@ -4,6 +4,8 @@ import { generateResponse, correctMermaidDiagram, RewriteResult } from './servic
 import { PersonaType, ChatMessage } from './types';
 import { DiagramModal } from './components/DiagramModal';
 
+declare const mermaid: any;
+
 const INITIAL_TEXT = `The SYMPHONY platform is an emergent multi-agent system designed for profound human-AI creative collaboration. Its core is a "polycentric agentic lattice," where specialized AI agents operate with distinct, NCP-defined "narrative identities." Mission: Chrysalis is the recursive, architectural transformation of this platform. It's about evolving from a nascent state to a fully self-aware, self-correcting ecosystem. We are moving beyond mere prompt engineering to architecturally integrate narrative intelligence, ensuring the platform itself acts as a "conductor" for our principled, advancing patterns of co-creation. This mission aims to forge a system where AI is a true creative partner, not just a tool.`;
 
 interface SamplePrompt {
@@ -57,6 +59,10 @@ const App: React.FC = () => {
     };
 
     fetchSamples();
+
+    if (typeof mermaid !== 'undefined') {
+      mermaid.initialize({ startOnLoad: false });
+    }
   }, []);
 
   const handleSendMessage = useCallback(async () => {
