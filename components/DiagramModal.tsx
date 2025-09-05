@@ -40,10 +40,10 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
 
 
   const resetTransform = useCallback(() => {
-    if (diagramRef.current?.firstChild && diagramContainerRef.current) {
-        const svgEl = diagramRef.current.firstChild as SVGSVGElement;
-        const container = diagramContainerRef.current;
-        
+    const svgEl = diagramRef.current?.querySelector('svg');
+    const container = diagramContainerRef.current;
+    
+    if (svgEl && container) {
         const containerRect = container.getBoundingClientRect();
         if (containerRect.width === 0 || containerRect.height === 0) {
             setTransform({ scale: 1, x: 0, y: 0 });
@@ -51,16 +51,21 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
         }
 
         const svgRect = svgEl.getBBox();
-        if (svgRect.width === 0 || svgRect.height === 0) {
+        if (svgRect.width === 0 || svgRect.height === 0 || !isFinite(svgRect.width) || !isFinite(svgRect.height)) {
             setTransform({ scale: 1, x: 0, y: 0 });
             return;
         }
 
         const scaleX = containerRect.width / svgRect.width;
         const scaleY = containerRect.height / svgRect.height;
-        const newScale = Math.min(scaleX, scaleY) * 0.95; // 0.95 gives a little padding
+        let newScale = Math.min(scaleX, scaleY) * 0.95; // 0.95 gives a little padding
 
-        // Center the diagram by accounting for the bounding box's own origin (svgRect.x, svgRect.y)
+        // SANITY CHECK: If getBBox() returns a gigantic value, scale becomes tiny.
+        // Default to a visible scale instead of making it disappear.
+        if (newScale < 0.01) {
+            newScale = 1;
+        }
+        
         const newX = (containerRect.width - svgRect.width * newScale) / 2 - svgRect.x * newScale;
         const newY = (containerRect.height - svgRect.height * newScale) / 2 - svgRect.y * newScale;
         
