@@ -134,6 +134,11 @@ const ArrowsPointingOutIcon: React.FC<{className?: string}> = ({className}) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m3.75 20.25v-4.5m0 4.5h-4.5m4.5 0L15 15m3.75-11.25h4.5m-4.5 0v4.5m0-4.5L15 9" />
     </svg>
 );
+const QueueListIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+    </svg>
+);
 // --- End of Icons ---
 
 
@@ -315,6 +320,7 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, personaType, v
 export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, history, isLoading, color, onExpandDiagram, onDiagramError, generationId, originalText }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isConversationPlaying, setIsConversationPlaying] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -344,6 +350,7 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   
   useEffect(() => {
       setIsCopied(false);
+      setIsConversationPlaying(false);
       // Let individual messages handle their own speech cancellation.
       // Global cancellation here might interfere with playing older messages.
   }, [history]);
@@ -363,6 +370,12 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   const handleSpeak = () => {
     if (!lastModelMessage) return;
     const synth = window.speechSynthesis;
+
+    if (isConversationPlaying) {
+      synth.cancel();
+      setIsConversationPlaying(false);
+    }
+
     if (isSpeaking) {
       synth.cancel();
       setIsSpeaking(false);
@@ -388,6 +401,60 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
         setIsSpeaking(false);
       };
       synth.speak(utterance);
+    }
+  };
+
+  const handlePlayConversation = () => {
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    if (isConversationPlaying) {
+        setIsConversationPlaying(false);
+        return;
+    }
+    
+    setIsSpeaking(false);
+
+    const utterances = history.map(message => {
+        const cleanText = stripMarkdown(message.rewrite);
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        if (message.role === 'user') {
+            utterance.voice = voices.find(voice => voice.name === 'Google US English') || voices.find(voice => voice.lang.startsWith('en')) || null;
+            utterance.rate = 1;
+            utterance.pitch = 1;
+        } else {
+            const config = personaVoiceConfig[personaType];
+            const selectedVoice = voices.find(voice => voice.name === config.voiceName);
+            utterance.voice = selectedVoice || voices.find(voice => voice.lang.startsWith('en')) || null;
+            utterance.rate = config.rate;
+            utterance.pitch = config.pitch;
+        }
+        return utterance;
+    }).filter(Boolean);
+
+    if (utterances.length > 0) {
+        setIsConversationPlaying(true);
+
+        let currentIndex = 0;
+        const playNext = () => {
+            if (currentIndex >= utterances.length) {
+                setIsConversationPlaying(false);
+                return;
+            }
+            const utterance = utterances[currentIndex];
+            utterance.onend = () => {
+                currentIndex++;
+                playNext();
+            };
+            utterance.onerror = (event) => {
+                if (event.error !== 'canceled' && event.error !== 'interrupted') {
+                    console.error("Speech synthesis error in conversation:", event.error);
+                }
+                setIsConversationPlaying(false); 
+            };
+            synth.speak(utterance);
+        };
+        playNext();
     }
   };
 
@@ -429,13 +496,16 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
         </div>
         {lastModelMessage && (
             <div className="flex items-center space-x-1 bg-black/20 p-1 rounded-full">
-                <button onClick={handleSpeak} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" aria-label={isSpeaking ? "Stop speaking" : "Listen to text"} title={isSpeaking ? "Stop speaking" : "Listen to text"} disabled={voices.length === 0}>
+                <button onClick={handlePlayConversation} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" aria-label={isConversationPlaying ? "Stop conversation" : "Play conversation"} title={isConversationPlaying ? "Stop conversation" : "Play conversation"} disabled={voices.length === 0 || history.length === 0}>
+                    {isConversationPlaying ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <QueueListIcon className="w-5 h-5" />}
+                </button>
+                <button onClick={handleSpeak} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" aria-label={isSpeaking ? "Stop speaking" : "Listen to last message"} title={isSpeaking ? "Stop speaking" : "Listen to last message"} disabled={voices.length === 0}>
                     {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5" />}
                 </button>
-                <button onClick={handleCopy} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200" aria-label="Copy text and diagram" title="Copy text and diagram">
+                <button onClick={handleCopy} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200" aria-label="Copy last message" title="Copy last message">
                     {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5" />}
                 </button>
-                <button onClick={handleExportMarkdown} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Export as Markdown" title="Export as Markdown" disabled={!lastModelMessage}>
+                <button onClick={handleExportMarkdown} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Export conversation as Markdown" title="Export as Markdown" disabled={!lastModelMessage}>
                     <ArrowDownTrayIcon className="w-5 h-5" />
                 </button>
             </div>

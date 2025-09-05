@@ -23,6 +23,7 @@ As a key, early realization of **Mission: Chrysalis's** core goals, `Lattice_Ech
 *   **AI Self-Correction**: If a generated diagram has a syntax error, the AI automatically attempts to correct it, ensuring a higher success rate for visualizations.
 *   **Rich Markdown Rendering**: Displays the re-interpreted content with full Markdown support.
 *   **Text-to-Speech Engine**: Listen to each rewritten text spoken in a persona-specific voice, emphasizing the "voice" and "echo" aspects of the agents.
+*   **Listen to Conversation**: Play back the entire chat history as a continuous audio narrative, with distinct voices for the user and the persona.
 *   **Multi-Format Export**:
     *   **Markdown**: Download the rewritten text as a `.md` file.
     *   **SVG Diagram**: Download the generated diagram as a scalable `.svg` file.
