@@ -140,6 +140,26 @@ const App: React.FC = () => {
     setOriginalText(e.target.value);
     setSelectedSample(''); // Reset dropdown when user types
   };
+  
+  const handleClear = () => {
+    setOriginalText('');
+    setSelectedSample('');
+  };
+
+  const handlePaste = async () => {
+    try {
+      setError(null);
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setOriginalText(text);
+        setSelectedSample('');
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard contents: ', err);
+      setError('Failed to paste from clipboard. Please grant permission.');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
 
   const handleExpandDiagram = (data: ModalData) => {
     setModalData(data);
@@ -149,6 +169,18 @@ const App: React.FC = () => {
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.475 2.118A2.25 2.25 0 0 1 .879 16.5c0-1.846.94-3.597 2.374-4.522s3.09-1.352 4.686-1.352a2.25 2.25 0 0 1 2.25 2.25c0 .832-.395 1.592-1.025 2.072a3 3 0 0 0-2.122 2.122Z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0-4.242 0 8.287 8.287 0 0 0 4.242 0Z" />
+    </svg>
+  );
+  
+  const ClearIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  );
+
+  const PasteIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 0 1-2.25 2.25H9A2.25 2.25 0 0 1 6.75 5.25v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V7.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
     </svg>
   );
 
@@ -189,12 +221,34 @@ const App: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <textarea
-                value={originalText}
-                onChange={handleTextareaChange}
-                placeholder="Enter text to rewrite..."
-                className="w-full h-48 p-4 bg-slate-900/70 border border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200 text-slate-200 resize-none"
-              />
+              <div className="relative w-full">
+                <textarea
+                  value={originalText}
+                  onChange={handleTextareaChange}
+                  placeholder="Enter text to rewrite..."
+                  className="w-full h-48 p-4 pr-20 bg-slate-900/70 border border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200 text-slate-200 resize-none"
+                />
+                 <div className="absolute top-3 right-3 flex items-center space-x-1">
+                    <button
+                        onClick={handlePaste}
+                        className="p-1.5 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        aria-label="Paste text from clipboard"
+                        title="Paste from clipboard"
+                    >
+                        <PasteIcon className="w-5 h-5" />
+                    </button>
+                    {originalText && (
+                        <button
+                            onClick={handleClear}
+                            className="p-1.5 rounded-full text-slate-400 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            aria-label="Clear text"
+                            title="Clear text"
+                        >
+                            <ClearIcon className="w-5 h-5" />
+                        </button>
+                    )}
+                 </div>
+              </div>
               <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 {error && <p className="text-red-400 text-sm text-center sm:text-left">{error}</p>}
                 <button
