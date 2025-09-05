@@ -41,11 +41,9 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
 
   const resetTransform = useCallback(() => {
     if (diagramRef.current?.firstChild && diagramContainerRef.current) {
-        // Fix: Cast to SVGSVGElement, which has the getBBox method. SVGElement does not.
         const svgEl = diagramRef.current.firstChild as SVGSVGElement;
         const container = diagramContainerRef.current;
         
-        // Ensure we wait for layout to get correct dimensions
         const containerRect = container.getBoundingClientRect();
         if (containerRect.width === 0 || containerRect.height === 0) {
             setTransform({ scale: 1, x: 0, y: 0 });
@@ -60,10 +58,11 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
 
         const scaleX = containerRect.width / svgRect.width;
         const scaleY = containerRect.height / svgRect.height;
-        const newScale = Math.min(scaleX, scaleY) * 0.95;
+        const newScale = Math.min(scaleX, scaleY) * 0.95; // 0.95 gives a little padding
 
-        const newX = (containerRect.width - svgRect.width * newScale) / 2;
-        const newY = (containerRect.height - svgRect.height * newScale) / 2;
+        // Center the diagram by accounting for the bounding box's own origin (svgRect.x, svgRect.y)
+        const newX = (containerRect.width - svgRect.width * newScale) / 2 - svgRect.x * newScale;
+        const newY = (containerRect.height - svgRect.height * newScale) / 2 - svgRect.y * newScale;
         
         setTransform({ scale: newScale, x: newX, y: newY });
     } else {
