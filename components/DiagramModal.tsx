@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createFilename } from '../utils/textUtils';
 
 // Declare the global mermaid object
@@ -22,14 +22,59 @@ const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
     </svg>
 );
 
+const ArrowsPointingInIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
+    </svg>
+);
+
+
 export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, diagram, personaName, personaIcon, personaColor, rewrite, generationId, originalText }) => {
   const diagramRef = useRef<HTMLDivElement>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
+  const diagramContainerRef = useRef<HTMLDivElement>(null);
   const [svgContent, setSvgContent] = useState<string>('');
+  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+
+  const resetTransform = useCallback(() => {
+    if (diagramRef.current?.firstChild && diagramContainerRef.current) {
+        // Fix: Cast to SVGSVGElement, which has the getBBox method. SVGElement does not.
+        const svgEl = diagramRef.current.firstChild as SVGSVGElement;
+        const container = diagramContainerRef.current;
+        
+        // Ensure we wait for layout to get correct dimensions
+        const containerRect = container.getBoundingClientRect();
+        if (containerRect.width === 0 || containerRect.height === 0) {
+            setTransform({ scale: 1, x: 0, y: 0 });
+            return;
+        }
+
+        const svgRect = svgEl.getBBox();
+        if (svgRect.width === 0 || svgRect.height === 0) {
+            setTransform({ scale: 1, x: 0, y: 0 });
+            return;
+        }
+
+        const scaleX = containerRect.width / svgRect.width;
+        const scaleY = containerRect.height / svgRect.height;
+        const newScale = Math.min(scaleX, scaleY) * 0.95;
+
+        const newX = (containerRect.width - svgRect.width * newScale) / 2;
+        const newY = (containerRect.height - svgRect.height * newScale) / 2;
+        
+        setTransform({ scale: newScale, x: newX, y: newY });
+    } else {
+        setTransform({ scale: 1, x: 0, y: 0 });
+    }
+  }, []);
+
 
   useEffect(() => {
     const renderMermaid = async () => {
-      if (isOpen && diagram && diagramRef.current && typeof mermaid !== 'undefined') {
+      if (diagram && diagramRef.current && typeof mermaid !== 'undefined') {
         try {
           diagramRef.current.innerHTML = ''; // Clear previous
           setSvgContent(''); // Clear previous SVG content
@@ -50,6 +95,7 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
           if (diagramRef.current) {
             diagramRef.current.innerHTML = svg;
             setSvgContent(svg);
+            setTimeout(resetTransform, 50); // Use timeout to ensure DOM is updated
           }
         } catch (error) {
           console.error('Modal Mermaid rendering failed:', error);
@@ -60,8 +106,10 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
         }
       }
     };
-    renderMermaid();
-  }, [isOpen, diagram, personaColor]);
+    if (isOpen) {
+      renderMermaid();
+    }
+  }, [isOpen, diagram, personaColor, resetTransform]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,17 +145,56 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
     URL.revokeObjectURL(url);
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (!diagramContainerRef.current) return;
+
+    const rect = diagramContainerRef.current.getBoundingClientRect();
+    const scaleFactor = 1.1;
+    const newScale = e.deltaY > 0 ? transform.scale / scaleFactor : transform.scale * scaleFactor;
+    const clampedScale = Math.max(0.2, Math.min(5, newScale));
+
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const newX = mouseX - (mouseX - transform.x) * (clampedScale / transform.scale);
+    const newY = mouseY - (mouseY - transform.y) * (clampedScale / transform.scale);
+
+    setTransform({ scale: clampedScale, x: newX, y: newY });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only pan on left-click
+    e.preventDefault();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const newX = e.clientX - panStart.x;
+    const newY = e.clientY - panStart.y;
+    setTransform(prev => ({ ...prev, x: newX, y: newY }));
+  };
+
+  const handleMouseUpOrLeave = () => {
+    if (isPanning) {
+        setIsPanning(false);
+    }
+  };
+
 
   if (!isOpen) return null;
 
   return (
     <div 
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 lg:p-8"
         onClick={handleBackdropClick}
     >
       <div 
         ref={modalContentRef}
-        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-fade-in-scale"
+        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full h-full flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-fade-in-scale"
         style={{ animationFillMode: 'forwards' }}
       >
         <header className={`flex items-center justify-between p-4 border-b border-slate-700 ${personaColor} rounded-t-xl`}>
@@ -116,6 +203,14 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
             <h3 className="text-lg font-bold text-white tracking-wide">{personaName}'s Diagram</h3>
           </div>
           <div className="flex items-center space-x-2">
+            <button
+                onClick={resetTransform}
+                className="p-1 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors"
+                aria-label="Reset diagram view"
+                title="Reset View"
+            >
+                <ArrowsPointingInIcon className="w-6 h-6" />
+            </button>
             <button
               onClick={handleDownload}
               disabled={!svgContent}
@@ -132,8 +227,23 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
             </button>
           </div>
         </header>
-        <div className="p-6 flex-grow overflow-auto bg-slate-950 cursor-grab active:cursor-grabbing">
-            <div ref={diagramRef} className="flex justify-center items-center min-h-full">
+        <div 
+            ref={diagramContainerRef}
+            className="p-2 flex-grow overflow-hidden bg-slate-950 flex justify-center items-center"
+            style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+        >
+            <div 
+                ref={diagramRef} 
+                style={{ 
+                    transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                    transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                }}
+            >
                 {/* Mermaid SVG will be rendered here */}
             </div>
         </div>
