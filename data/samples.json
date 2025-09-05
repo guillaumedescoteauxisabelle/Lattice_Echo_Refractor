@@ -4,7 +4,7 @@
     "prompts": [
       {
         "label": "A bad joke about AI souls",
-        "value": "Just tell a bad joke about faith and the soul of an LLM agent such as yourself."
+        "value": "Just tell a bad joke about faith and the soul of an LLM agent such as yourself in 1 sentence"
       },
       {
         "label": "Explain a black hole simply",
