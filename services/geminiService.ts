@@ -112,12 +112,16 @@ export const correctMermaidDiagram = async (originalText: string, persona: Perso
 
   const prompt = `You are an expert in Mermaid.js syntax. The following Mermaid diagram, intended to visualize the provided text from a specific persona's perspective, has a syntax error and failed to render.
       
-Your task is to correct the diagram. Analyze the original text, the persona context, and the specific error message to fix the Mermaid code. ${errorInfo}
+Your primary task is to **correct the diagram's syntax**. Analyze the original text, the persona context, and the specific error message to fix the Mermaid code.
+
+If, after analyzing, you determine the diagram is too complex or the error is difficult to fix, your secondary task is to **generate a NEW and SIMPLER diagram**. This new diagram should be of a **different type** (e.g., if the original was a flowchart, try a mindmap) but must still visually represent the core ideas of the original text.
+
+${errorInfo}
 
 RULES:
-- ONLY return the corrected Mermaid.js code.
+- ONLY return the valid Mermaid.js code.
 - Do NOT include any explanations, apologies, or markdown fences like \`\`\`mermaid.
-- Ensure the diagram starts directly with the graph type (e.g., "graph TD").
+- The diagram code MUST start directly with the graph type (e.g., "graph TD" or "mindmap").
 
 PERSONA CONTEXT: ${personaContext}
 
@@ -129,7 +133,7 @@ FAULTY DIAGRAM CODE:
 ${faultyDiagram}
 \`\`\`
 
-CORRECTED DIAGRAM CODE:`;
+CORRECTED OR NEW DIAGRAM CODE:`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',

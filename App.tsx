@@ -110,7 +110,7 @@ const App: React.FC = () => {
   }, [userInput, isLoading, miaHistory, mietteHistory]);
 
   const handleDiagramError = useCallback(async (persona: PersonaType, faultyDiagram: string, errorMessage: string) => {
-    if (retryCount[persona] >= 1) {
+    if (retryCount[persona] >= 2) {
         console.error(`Max retries reached for ${persona}. Cannot fix diagram.`);
         const historyUpdater = persona === PersonaType.Mia ? setMiaHistory : setMietteHistory;
         historyUpdater(prev => {
