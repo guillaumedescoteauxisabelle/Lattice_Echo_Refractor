@@ -468,9 +468,11 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
             if (message.role === 'user') {
                 return (
                     <div key={messageId} className="self-end max-w-xl w-full flex flex-col items-end">
-                        <div className="bg-slate-900 border border-slate-700 rounded-xl rounded-br-none p-4">
+                        <div className="bg-slate-900 border border-purple-800/60 rounded-xl rounded-br-none p-4">
                             <p className="font-semibold text-purple-300 mb-2 text-right">You</p>
-                            <p className="text-slate-300 whitespace-pre-wrap">{message.rewrite}</p>
+                            <div className="prose-content">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.rewrite}</ReactMarkdown>
+                            </div>
                         </div>
                     </div>
                 );
