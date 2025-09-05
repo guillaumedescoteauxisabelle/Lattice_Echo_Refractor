@@ -89,7 +89,7 @@ const App: React.FC = () => {
     }
   }, [originalText, isLoading]);
 
-  const handleDiagramError = useCallback(async (persona: PersonaType, faultyDiagram: string) => {
+  const handleDiagramError = useCallback(async (persona: PersonaType, faultyDiagram: string, errorMessage: string) => {
     if (retryCount[persona] >= 1) {
         console.error(`Max retries reached for ${persona}. Cannot fix diagram.`);
         // Signal a permanent failure to the PersonaCard
@@ -107,7 +107,7 @@ const App: React.FC = () => {
     setRetryCount(prev => ({ ...prev, [persona]: prev[persona] + 1 }));
 
     try {
-        const correctedDiagram = await correctMermaidDiagram(originalText, persona, faultyDiagram);
+        const correctedDiagram = await correctMermaidDiagram(originalText, persona, faultyDiagram, errorMessage);
 
         if (persona === PersonaType.Mia) {
             setMiaData(prev => prev ? { ...prev, mermaidDiagram: correctedDiagram } : null);

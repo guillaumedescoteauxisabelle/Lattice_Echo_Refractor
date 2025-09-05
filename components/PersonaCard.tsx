@@ -118,7 +118,7 @@ interface PersonaCardProps {
   color: string;
   generationId: string;
   onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType, rewrite: string, generationId: string }) => void;
-  onDiagramError: (personaType: PersonaType, faultyDiagram: string) => void;
+  onDiagramError: (personaType: PersonaType, faultyDiagram: string, errorMessage: string) => void;
 }
 
 const SkeletonLoader: React.FC = () => (
@@ -235,8 +235,8 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
           setMermaidSvg(svg);
         } catch (error) {
           console.error('Mermaid rendering failed for', personaType, ':', error);
-          // Trigger the self-correction attempt without showing an immediate error to the user
-          onDiagramError(personaType, mermaidDiagram);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          onDiagramError(personaType, mermaidDiagram, errorMessage);
         }
       } else {
         setMermaidSvg(''); // Clear SVG when loading or if there's no diagram

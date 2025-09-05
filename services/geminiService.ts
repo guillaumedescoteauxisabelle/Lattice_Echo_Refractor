@@ -88,7 +88,7 @@ export const rewriteText = async (originalText: string, persona: PersonaType): P
   }
 };
 
-export const correctMermaidDiagram = async (originalText: string, persona: PersonaType, faultyDiagram: string): Promise<string> => {
+export const correctMermaidDiagram = async (originalText: string, persona: PersonaType, faultyDiagram: string, errorMessage?: string): Promise<string> => {
   if (!process.env.API_KEY) {
     throw new Error("API key is not configured.");
   }
@@ -96,10 +96,12 @@ export const correctMermaidDiagram = async (originalText: string, persona: Perso
   const personaContext = persona === PersonaType.Mia 
     ? "The diagram should be structural and logical." 
     : "The diagram should be conceptual and emotional.";
+  
+  const errorInfo = errorMessage ? `The specific rendering error was: "${errorMessage}"` : '';
 
   const prompt = `You are an expert in Mermaid.js syntax. The following Mermaid diagram, intended to visualize the provided text from a specific persona's perspective, has a syntax error and failed to render.
       
-Your task is to correct the diagram. Analyze the original text and the persona context to fix the Mermaid code.
+Your task is to correct the diagram. Analyze the original text, the persona context, and the specific error message to fix the Mermaid code. ${errorInfo}
 
 RULES:
 - ONLY return the corrected Mermaid.js code.
