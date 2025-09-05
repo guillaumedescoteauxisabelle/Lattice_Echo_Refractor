@@ -240,6 +240,98 @@ const ArrowsPointingOutIcon: React.FC<{className?: string}> = ({className}) => (
 // --- End of Icons ---
 
 
+// --- User Per-Message Action Component ---
+interface UserMessageActionsProps {
+  message: ChatMessage;
+  voices: SpeechSynthesisVoice[];
+  generationId: string;
+  originalText: string;
+  messageIndex: number;
+}
+
+const UserMessageActions: React.FC<UserMessageActionsProps> = ({ message, voices, generationId, originalText, messageIndex }) => {
+    const [isCopied, setIsCopied] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+    useEffect(() => {
+        // Cleanup function to stop speaking if the component unmounts
+        return () => {
+            if (utteranceRef.current) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(message.rewrite);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    const handleSpeak = () => {
+        const synth = window.speechSynthesis;
+        if (isSpeaking) {
+            synth.cancel();
+            return;
+        }
+
+        if (voices.length > 0) {
+            synth.cancel(); // Stop any other speech
+            const cleanText = stripMarkdown(message.rewrite);
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utteranceRef.current = utterance;
+            
+            // Use a default, neutral voice for the user's text
+            utterance.voice = voices.find(voice => voice.name === 'Google US English') || voices.find(voice => voice.lang.startsWith('en')) || null;
+            utterance.rate = 1;
+            utterance.pitch = 1;
+
+            utterance.onstart = () => setIsSpeaking(true);
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                utteranceRef.current = null;
+            };
+            utterance.onerror = (event) => {
+                if (event.error !== 'interrupted' && event.error !== 'canceled') {
+                    console.error("Speech synthesis error:", event.error);
+                }
+                setIsSpeaking(false);
+                utteranceRef.current = null;
+            };
+            synth.speak(utterance);
+        }
+    };
+    
+    const handleDownload = () => {
+        const blob = new Blob([message.rewrite], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = createFilename("You", originalText, 'txt', generationId, messageIndex);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    return (
+        <div className="absolute top-2 right-2 flex items-center space-x-1 bg-black/30 p-1 rounded-full opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 z-10">
+            <button onClick={handleSpeak} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all" title={isSpeaking ? "Stop" : "Listen"}>
+                {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5" />}
+            </button>
+            <button onClick={handleCopy} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all" title="Copy">
+                {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <CopyIcon className="w-5 h-5" />}
+            </button>
+            <button onClick={handleDownload} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all" title="Download Text">
+                <ArrowDownTrayIcon className="w-5 h-5" />
+            </button>
+        </div>
+    );
+};
+// --- End of User Message Actions ---
+
+
 // --- Per-Message Action Component ---
 interface MessageActionsProps {
   message: ChatMessage;
@@ -545,13 +637,20 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
             const messageId = `${personaType}-${index}`;
             if (message.role === 'user') {
                 return (
-                    <div key={messageId} className="self-end max-w-xl w-full flex flex-col items-end">
+                    <div key={messageId} className="self-end max-w-xl w-full flex flex-col items-end relative group">
                         <div className="bg-slate-900 border border-purple-800/60 rounded-xl rounded-br-none p-4">
                             <p className="font-semibold text-purple-300 mb-2 text-right">You</p>
                             <div className="prose-content">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.rewrite}</ReactMarkdown>
                             </div>
                         </div>
+                        <UserMessageActions
+                            message={message}
+                            voices={voices}
+                            generationId={generationId}
+                            originalText={originalText}
+                            messageIndex={index}
+                        />
                     </div>
                 );
             } else { // model

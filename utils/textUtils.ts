@@ -29,7 +29,7 @@ export const stripMarkdown = (markdown: string): string => {
   return output.trim();
 };
 
-export const createFilename = (personaName: string, baseContent: string, extension: string, generationId: string): string => {
+export const createFilename = (personaName: string, baseContent: string, extension: string, generationId: string, messageIndex?: number): string => {
   let basename = '';
 
   if (!baseContent) {
@@ -52,10 +52,15 @@ export const createFilename = (personaName: string, baseContent: string, extensi
 
   const finalBasename = sanitizedBasename || 'export';
   // Extracts the last word (the name) and makes it lowercase.
-  // This handles "🧠 Mia" -> "mia" and "🌸 Miette" -> "miette".
+  // This handles "🧠 Mia" -> "mia" and "You" -> "you".
   const personaSuffix = personaName.split(' ').pop()?.toLowerCase() || personaName.toLowerCase();
   
-  const uniqueBasename = generationId ? `${finalBasename}_${generationId}` : finalBasename;
+  let uniqueBasename = generationId ? `${finalBasename}_${generationId}` : finalBasename;
+
+  if (messageIndex !== undefined) {
+    // Pad with leading zero for sorting, e.g., _01, _02, ... _10
+    uniqueBasename += `_${String(messageIndex).padStart(2, '0')}`;
+  }
 
   return `${uniqueBasename}.${personaSuffix}.${extension}`;
 };
