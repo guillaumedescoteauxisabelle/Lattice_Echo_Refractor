@@ -324,10 +324,22 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
 
   const handleExportMarkdown = () => {
     if (!lastModelMessage) return;
-    let fullContent = lastModelMessage.rewrite;
-    if (lastModelMessage.mermaidDiagram && lastModelMessage.mermaidDiagram !== '/* ERROR */') {
-        fullContent += `\n\n## Visual Representation\n\n\`\`\`mermaid\n${lastModelMessage.mermaidDiagram}\n\`\`\``;
-    }
+  
+    let fullContent = `# Conversation with ${name}\n\n`;
+    fullContent += `**Topic:** ${originalText}\n\n---\n\n`;
+  
+    history.forEach(message => {
+      if (message.role === 'user') {
+        fullContent += `## You\n\n> ${message.rewrite.replace(/\n/g, '\n> ')}\n\n`;
+      } else { // model
+        fullContent += `## ${icon} ${name.split(' ').pop()}\n\n${message.rewrite}\n\n`;
+        if (message.mermaidDiagram && message.mermaidDiagram !== '/* ERROR */') {
+          fullContent += `**Visual Representation:**\n\n\`\`\`mermaid\n${message.mermaidDiagram}\n\`\`\`\n\n`;
+        }
+      }
+      fullContent += '---\n\n';
+    });
+  
     const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
