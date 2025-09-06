@@ -3,6 +3,7 @@ import { PersonaCard } from './components/PersonaCard';
 import { generateResponseStream, correctMermaidDiagram } from './services/geminiService';
 import { PersonaType, ChatMessage } from './types';
 import { DiagramModal } from './components/DiagramModal';
+import { createFilename } from './utils/textUtils';
 
 declare const mermaid: any;
 
@@ -294,6 +295,52 @@ const App: React.FC = () => {
     setSelectedSample('');
   };
 
+  const handleDownloadAll = () => {
+    if (miaHistory.length === 0) return;
+
+    let fullContent = `# Full Conversation Export\n\n`;
+    fullContent += `**Topic:** ${conversationTopic}\n\n---\n\n`;
+
+    // Iterate through conversation turns. Each turn has a user message and two model responses.
+    for (let i = 0; i < miaHistory.length; i += 2) {
+        const userMessage = miaHistory[i];
+        const miaMessage = miaHistory[i+1];
+        const mietteMessage = mietteHistory[i+1]; // Histories have the same structure
+
+        if (userMessage && userMessage.role === 'user') {
+            const turnNumber = (i/2) + 1;
+            fullContent += `## Turn ${turnNumber}\n\n`;
+            fullContent += `### You\n\n> ${userMessage.rewrite.replace(/\n/g, '\n> ')}\n\n---\n\n`;
+        
+            if (miaMessage && miaMessage.role === 'model') {
+                 fullContent += `### 🧠 Mia\n\n${miaMessage.rewrite}\n\n`;
+                if (miaMessage.mermaidDiagram && miaMessage.mermaidDiagram !== '/* ERROR */') {
+                    fullContent += `**Visual Representation:**\n\n\`\`\`mermaid\n${miaMessage.mermaidDiagram}\n\`\`\`\n\n`;
+                }
+            }
+
+            if (mietteMessage && mietteMessage.role === 'model') {
+                fullContent += `### 🌸 Miette\n\n${mietteMessage.rewrite}\n\n`;
+                if (mietteMessage.mermaidDiagram && mietteMessage.mermaidDiagram !== '/* ERROR */') {
+                    fullContent += `**Visual Representation:**\n\n\`\`\`mermaid\n${mietteMessage.mermaidDiagram}\n\`\`\`\n\n`;
+                }
+            }
+             fullContent += '---\n\n';
+        }
+    }
+
+    const filename = createFilename("Conversation", conversationTopic, 'md', generationId);
+    const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const editActions = {
     start: handleStartEdit,
     cancel: handleCancelEdit,
@@ -301,6 +348,7 @@ const App: React.FC = () => {
     set: setEditingState,
   };
 
+  // --- Icon Components ---
   const MagicWandIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.475 2.118A2.25 2.25 0 0 1 .879 16.5c0-1.846.94-3.597 2.374-4.522s3.09-1.352 4.686-1.352a2.25 2.25 0 0 1 2.25 2.25c0 .832-.395 1.592-1.025 2.072a3 3 0 0 0-2.122 2.122Z" />
@@ -326,6 +374,13 @@ const App: React.FC = () => {
     </svg>
   );
 
+  const ArrowDownTrayIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+  );
+  // --- End Icon Components ---
+
   const buttonText = miaHistory.length > 0 ? 'Send' : 'Rewrite';
 
   return (
@@ -344,14 +399,24 @@ const App: React.FC = () => {
               Transform your text through the lens of two distinct AI personas.
             </p>
             {miaHistory.length > 0 && (
-              <button
-                onClick={handleNewConversation}
-                className="absolute top-0 right-0 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500"
-                title="Start a new conversation"
-              >
-                <NewConversationIcon className="w-5 h-5" />
-                New Conversation
-              </button>
+              <div className="absolute top-0 right-0 flex items-center gap-2">
+                <button
+                  onClick={handleDownloadAll}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500"
+                  title="Download full conversation"
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5" />
+                  Download All
+                </button>
+                <button
+                  onClick={handleNewConversation}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500"
+                  title="Start a new conversation"
+                >
+                  <NewConversationIcon className="w-5 h-5" />
+                  New Conversation
+                </button>
+              </div>
             )}
           </header>
 

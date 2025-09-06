@@ -41,6 +41,7 @@ This phase will focus on improving the user experience, performance, and accessi
     - `[x]` **Per-Message Actions**: Add action buttons (Listen, Copy) to each individual message from a persona.
     - `[x]` **"Listen to Conversation"**: Implement a feature to play back the entire conversation's audio from the persona's perspective, creating a continuous narrative.
     - `[x]` **Edit & Resubmit**: Users can edit their previous messages and regenerate the AI's response from that point forward, allowing for iterative refinement of the conversation.
+    - `[x]` **"Download All"**: A global export feature to download the entire conversation with both personas into a single, well-structured Markdown file.
 - `[*]` **Streaming Responses**: Implement streaming for the `rewrite` text to show results as they are generated, improving perceived performance and user engagement.
 - `[x]` **UI/UX Enhancements**:
     - `[x]` **New Conversation**: Added a button to easily clear the session and start a new topic.
