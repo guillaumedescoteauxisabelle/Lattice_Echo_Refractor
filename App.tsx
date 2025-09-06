@@ -281,6 +281,18 @@ const App: React.FC = () => {
   const handleCancelEdit = () => {
     setEditingState(null);
   };
+  
+  const handleNewConversation = () => {
+    setIsLoading(false);
+    setError(null);
+    setMiaHistory([]);
+    setMietteHistory([]);
+    setUserInput(INITIAL_TEXT);
+    setConversationTopic('');
+    setGenerationId(generateTimestampId());
+    setEditingState(null);
+    setSelectedSample('');
+  };
 
   const editActions = {
     start: handleStartEdit,
@@ -307,8 +319,14 @@ const App: React.FC = () => {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 0 1-2.25 2.25H9A2.25 2.25 0 0 1 6.75 5.25v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V7.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
     </svg>
   );
+  
+  const NewConversationIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  );
 
-  const buttonText = miaHistory.length > 0 ? 'Send Follow-up' : 'Rewrite';
+  const buttonText = miaHistory.length > 0 ? 'Send' : 'Rewrite';
 
   return (
     <>
@@ -318,13 +336,23 @@ const App: React.FC = () => {
         </div>
 
         <div className="max-w-7xl mx-auto">
-          <header className="text-center mb-8 md:mb-12">
+          <header className="relative text-center mb-8 md:mb-12">
             <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
               Persona Rewriter AI
             </h1>
             <p className="text-slate-400 mt-2 max-w-2xl mx-auto">
               Transform your text through the lens of two distinct AI personas.
             </p>
+            {miaHistory.length > 0 && (
+              <button
+                onClick={handleNewConversation}
+                className="absolute top-0 right-0 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-300 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500"
+                title="Start a new conversation"
+              >
+                <NewConversationIcon className="w-5 h-5" />
+                New Conversation
+              </button>
+            )}
           </header>
 
           <main className="space-y-8">

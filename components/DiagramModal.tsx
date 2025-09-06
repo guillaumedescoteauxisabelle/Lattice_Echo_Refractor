@@ -37,6 +37,7 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [showHelp, setShowHelp] = useState(false);
 
 
   const resetTransform = useCallback(() => {
@@ -112,6 +113,9 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
     };
     if (isOpen) {
       renderMermaid();
+      setShowHelp(true);
+      const timer = setTimeout(() => setShowHelp(false), 3500);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, diagram, personaColor, resetTransform]);
 
@@ -209,22 +213,23 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
           <div className="flex items-center space-x-2">
             <button
                 onClick={resetTransform}
-                className="p-1 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors"
                 aria-label="Reset diagram view"
                 title="Reset View"
             >
-                <ArrowsPointingInIcon className="w-6 h-6" />
+                <ArrowsPointingInIcon className="w-5 h-5" />
+                <span className="text-sm font-medium">Reset</span>
             </button>
             <button
               onClick={handleDownload}
               disabled={!svgContent}
-              className="p-1 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Download diagram as SVG"
               title="Download SVG"
             >
               <ArrowDownTrayIcon className="w-6 h-6" />
             </button>
-            <button onClick={onClose} className="p-1 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors" aria-label="Close diagram view">
+            <button onClick={onClose} className="p-1.5 rounded-full text-white/70 hover:bg-white/20 hover:text-white transition-colors" aria-label="Close diagram view">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
@@ -233,7 +238,7 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
         </header>
         <div 
             ref={diagramContainerRef}
-            className="p-2 flex-grow overflow-hidden bg-slate-950 flex justify-center items-center"
+            className="p-2 flex-grow overflow-hidden bg-slate-950 flex justify-center items-center relative"
             style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
@@ -241,6 +246,11 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
             onMouseUp={handleMouseUpOrLeave}
             onMouseLeave={handleMouseUpOrLeave}
         >
+            {showHelp && (
+              <div className="absolute bottom-4 left-1/2 bg-black/50 text-white px-3 py-1.5 rounded-lg text-sm animate-fade-in-out">
+                  Scroll to zoom, drag to pan
+              </div>
+            )}
             <div 
                 ref={diagramRef} 
                 style={{ 
@@ -261,6 +271,16 @@ export const DiagramModal: React.FC<DiagramModalProps> = ({ isOpen, onClose, dia
           animation-name: fade-in-scale;
           animation-duration: 0.2s;
           animation-timing-function: ease-out;
+        }
+        @keyframes fade-in-out {
+            0% { opacity: 0; transform: translateY(10px) translateX(-50%); }
+            20% { opacity: 1; transform: translateY(0) translateX(-50%); }
+            80% { opacity: 1; transform: translateY(0) translateX(-50%); }
+            100% { opacity: 0; transform: translateY(10px) translateX(-50%); }
+        }
+        .animate-fade-in-out {
+            animation: fade-in-out 3.5s ease-in-out forwards;
+            left: 50%; /* Required for translateX(-50%) to work correctly */
         }
       `}</style>
     </div>

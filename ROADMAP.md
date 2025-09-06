@@ -26,11 +26,10 @@ This phase enhanced the user experience by adding multimedia output and more rob
 - `[x]` Text-to-Speech (TTS) integration using the browser's Web Speech API.
 - `[x]` Persona-specific voice configurations for unique TTS output.
 - `[x]` Export rewritten content as a Markdown (`.md`) file.
-- `[x]` Export TTS audio as a WebM (`.webm`) file via tab audio capture.
 - `[x]` Visual diagram generation using Mermaid.js based on the rewritten text.
 - `[x]` Modal view for expanding and inspecting diagrams.
 - `[x]` Export diagrams as scalable vector graphic (`.svg`) files.
-- `[x]` Dynamic, content-aware filenaming for all exported files (Markdown, audio, SVG).
+- `[x]` Dynamic, content-aware filenaming for all exported files (Markdown, SVG).
 - `[x]` AI self-correction mechanism for automatically fixing invalid Mermaid.js syntax.
 
 ## Phase 3: UX & Performance Refinements (In Progress)
@@ -43,7 +42,9 @@ This phase will focus on improving the user experience, performance, and accessi
     - `[x]` **"Listen to Conversation"**: Implement a feature to play back the entire conversation's audio from the persona's perspective, creating a continuous narrative.
     - `[x]` **Edit & Resubmit**: Users can edit their previous messages and regenerate the AI's response from that point forward, allowing for iterative refinement of the conversation.
 - `[*]` **Streaming Responses**: Implement streaming for the `rewrite` text to show results as they are generated, improving perceived performance and user engagement.
-- `[ ]` **UI/UX Enhancements**:
+- `[x]` **UI/UX Enhancements**:
+    - `[x]` **New Conversation**: Added a button to easily clear the session and start a new topic.
+    - `[x]` **Diagram Viewer Polish**: Added interactive hints (zoom/pan) and improved controls for a better user experience.
     - `[ ]` Animate transitions between states (e.g., loading, content display) more smoothly.
     - `[ ]` Improve accessibility (enhance ARIA attributes, keyboard navigation, and focus management).
 - `[ ]` **Advanced Diagramming**:
