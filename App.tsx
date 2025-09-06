@@ -29,6 +29,17 @@ interface ModalData {
     originalText: string;
 }
 
+const generateTimestampId = () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    return `${year}${month}${day}${hours}${minutes}${seconds}`;
+};
+
 const App: React.FC = () => {
   const [userInput, setUserInput] = useState<string>(INITIAL_TEXT);
   const [miaHistory, setMiaHistory] = useState<ChatMessage[]>([]);
@@ -41,6 +52,7 @@ const App: React.FC = () => {
   const [retryCount, setRetryCount] = useState({[PersonaType.Mia]: 0, [PersonaType.Miette]: 0});
   const [generationId, setGenerationId] = useState<string>('');
   const [conversationTopic, setConversationTopic] = useState<string>('');
+  const [editingState, setEditingState] = useState<{ id: string; text: string } | null>(null);
 
 
   useEffect(() => {
@@ -59,38 +71,28 @@ const App: React.FC = () => {
     };
 
     fetchSamples();
+    setGenerationId(generateTimestampId());
 
     if (typeof mermaid !== 'undefined') {
       mermaid.initialize({ startOnLoad: false });
     }
   }, []);
 
-  const handleSendMessage = useCallback(async () => {
-    if (!userInput.trim() || isLoading) return;
-  
-    const isFirstMessage = miaHistory.length === 0;
-    const originalHistories = { mia: miaHistory, miette: mietteHistory };
-  
-    if (isFirstMessage) {
-      setMiaHistory([]);
-      setMietteHistory([]);
-      setConversationTopic(userInput);
-      setRetryCount({ [PersonaType.Mia]: 0, [PersonaType.Miette]: 0 });
-      const now = new Date();
-      const year = now.getFullYear().toString().slice(-2);
-      const month = (now.getMonth() + 1).toString().padStart(2, '0');
-      const day = now.getDate().toString().padStart(2, '0');
-      const hours = now.getHours().toString().padStart(2, '0');
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      const seconds = now.getSeconds().toString().padStart(2, '0');
-      const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
-      setGenerationId(timestamp);
-    }
-  
-    const userMessage: ChatMessage = { role: 'user', rewrite: userInput };
-    const historyForMiaAPI = [...(isFirstMessage ? [] : miaHistory), userMessage];
-    const historyForMietteAPI = [...(isFirstMessage ? [] : mietteHistory), userMessage];
-  
+  const startGeneration = useCallback(async (
+    text: string, 
+    baseMiaHistory: ChatMessage[], 
+    baseMietteHistory: ChatMessage[],
+    currentGenerationId: string
+  ) => {
+    
+    const originalHistories = { mia: baseMiaHistory, miette: baseMietteHistory };
+    
+    const messageId = `${currentGenerationId}-${baseMiaHistory.length}`;
+    const userMessage: ChatMessage = { id: messageId, role: 'user', rewrite: text };
+    
+    const historyForMiaAPI = [...baseMiaHistory, userMessage];
+    const historyForMietteAPI = [...baseMietteHistory, userMessage];
+    
     setMiaHistory(historyForMiaAPI);
     setMietteHistory(historyForMietteAPI);
     setIsLoading(true);
@@ -98,8 +100,8 @@ const App: React.FC = () => {
     setUserInput('');
   
     // Add empty placeholders for streaming
-    setMiaHistory(prev => [...prev, { role: 'model', rewrite: '', mermaidDiagram: '' }]);
-    setMietteHistory(prev => [...prev, { role: 'model', rewrite: '', mermaidDiagram: '' }]);
+    setMiaHistory(prev => [...prev, { id: `${messageId}-mia`, role: 'model', rewrite: '', mermaidDiagram: '' }]);
+    setMietteHistory(prev => [...prev, { id: `${messageId}-miette`, role: 'model', rewrite: '', mermaidDiagram: '' }]);
   
     const processStream = async (persona: PersonaType, historyForAPI: ChatMessage[]) => {
       const setHistory = persona === PersonaType.Mia ? setMiaHistory : setMietteHistory;
@@ -143,7 +145,6 @@ const App: React.FC = () => {
         });
       } catch (err) {
         console.error(`Error streaming for ${persona}:`, err);
-        // Let the main catch block handle UI state
         throw err;
       }
     };
@@ -155,13 +156,46 @@ const App: React.FC = () => {
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-      // Revert to the state before this send action
       setMiaHistory(originalHistories.mia);
       setMietteHistory(originalHistories.miette);
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, miaHistory, mietteHistory]);
+  }, []);
+
+  const handleSendMessage = useCallback(async () => {
+    if (!userInput.trim() || isLoading) return;
+  
+    const isFirstMessage = miaHistory.length === 0;
+  
+    if (isFirstMessage) {
+      setConversationTopic(userInput);
+      setRetryCount({ [PersonaType.Mia]: 0, [PersonaType.Miette]: 0 });
+      const newId = generateTimestampId();
+      setGenerationId(newId);
+      await startGeneration(userInput, [], [], newId);
+    } else {
+      await startGeneration(userInput, miaHistory, mietteHistory, generationId);
+    }
+  }, [userInput, isLoading, miaHistory, mietteHistory, generationId, startGeneration]);
+
+  const handleEditSubmit = useCallback(async (messageId: string, newText: string) => {
+    if (!newText.trim() || isLoading) return;
+
+    const userMessageIndex = miaHistory.findIndex(m => m.id === messageId);
+    if (userMessageIndex === -1) {
+        console.error("Could not find message to edit.");
+        setEditingState(null);
+        return;
+    }
+
+    setEditingState(null);
+
+    const baseMiaHistory = miaHistory.slice(0, userMessageIndex);
+    const baseMietteHistory = mietteHistory.slice(0, userMessageIndex);
+    
+    await startGeneration(newText, baseMiaHistory, baseMietteHistory, generationId);
+  }, [isLoading, miaHistory, mietteHistory, generationId, startGeneration]);
 
   const handleDiagramError = useCallback(async (persona: PersonaType, faultyDiagram: string, errorMessage: string) => {
     if (retryCount[persona] >= 2) {
@@ -203,7 +237,6 @@ const App: React.FC = () => {
     }
   }, [retryCount, conversationTopic]);
 
-
   const handleSampleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
     setSelectedSample(selectedValue);
@@ -239,6 +272,21 @@ const App: React.FC = () => {
 
   const handleExpandDiagram = (data: ModalData) => {
     setModalData(data);
+  };
+  
+  const handleStartEdit = (message: ChatMessage) => {
+    setEditingState({ id: message.id, text: message.rewrite });
+  };
+  
+  const handleCancelEdit = () => {
+    setEditingState(null);
+  };
+
+  const editActions = {
+    start: handleStartEdit,
+    cancel: handleCancelEdit,
+    submit: handleEditSubmit,
+    set: setEditingState,
   };
 
   const MagicWandIcon: React.FC<{className?: string}> = ({className}) => (
@@ -280,7 +328,7 @@ const App: React.FC = () => {
           </header>
 
           <main className="space-y-8">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-lg p-6">
+            <div className={`bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-lg p-6 transition-opacity duration-300 ${editingState ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
                 <h2 className="text-xl font-semibold text-slate-200">Your Text</h2>
                 <select
@@ -372,6 +420,8 @@ const App: React.FC = () => {
                 onDiagramError={handleDiagramError}
                 generationId={generationId}
                 originalText={conversationTopic}
+                editingState={editingState}
+                editActions={editActions}
               />
               <PersonaCard
                 name="🌸 Miette"
@@ -384,6 +434,8 @@ const App: React.FC = () => {
                 onDiagramError={handleDiagramError}
                 generationId={generationId}
                 originalText={conversationTopic}
+                editingState={editingState}
+                editActions={editActions}
               />
             </div>
           </main>

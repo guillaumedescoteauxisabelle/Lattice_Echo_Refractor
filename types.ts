@@ -5,6 +5,7 @@ export enum PersonaType {
 }
 
 export interface ChatMessage {
+    id: string;
     role: 'user' | 'model';
     rewrite: string;
     mermaidDiagram?: string;

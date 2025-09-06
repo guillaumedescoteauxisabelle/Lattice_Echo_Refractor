@@ -88,6 +88,14 @@ interface PersonaCardProps {
   originalText: string;
   onExpandDiagram: (data: { name: string, icon: string, color: string, diagram: string, personaType: PersonaType, rewrite: string, generationId: string, originalText: string }) => void;
   onDiagramError: (personaType: PersonaType, faultyDiagram: string, errorMessage: string) => void;
+  // Editing props
+  editingState: { id: string; text: string } | null;
+  editActions: {
+    start: (message: ChatMessage) => void;
+    cancel: () => void;
+    submit: (id: string, text: string) => void;
+    set: React.Dispatch<React.SetStateAction<{ id: string; text: string; } | null>>;
+  };
 }
 
 const SkeletonLoader: React.FC = () => (
@@ -103,6 +111,11 @@ const SkeletonLoader: React.FC = () => (
 );
 
 // --- Icon Components ---
+const EditPencilIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+    </svg>
+);
 const CopyIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
@@ -149,9 +162,11 @@ interface UserMessageActionsProps {
   generationId: string;
   originalText: string;
   messageIndex: number;
+  onStartEdit: (message: ChatMessage) => void;
+  isEditing: boolean;
 }
 
-const UserMessageActions: React.FC<UserMessageActionsProps> = ({ message, voices, generationId, originalText, messageIndex }) => {
+const UserMessageActions: React.FC<UserMessageActionsProps> = ({ message, voices, generationId, originalText, messageIndex, onStartEdit, isEditing }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -221,6 +236,9 @@ const UserMessageActions: React.FC<UserMessageActionsProps> = ({ message, voices
 
     return (
         <div className="absolute top-2 right-2 flex items-center space-x-1 bg-black/30 p-1 rounded-full opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 z-10">
+            <button onClick={() => onStartEdit(message)} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed" title="Edit & Resubmit" disabled={isEditing}>
+                <EditPencilIcon className="w-5 h-5" />
+            </button>
             <button onClick={handleSpeak} className="p-1.5 rounded-full text-white/80 hover:bg-white/20 hover:text-white transition-all" title={isSpeaking ? "Stop" : "Listen"}>
                 {isSpeaking ? <StopCircleIcon className="w-5 h-5 text-red-400" /> : <SpeakerWaveIcon className="w-5 h-5" />}
             </button>
@@ -317,7 +335,58 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, personaType, v
 };
 // --- End of Message Actions ---
 
-export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, history, isLoading, color, onExpandDiagram, onDiagramError, generationId, originalText }) => {
+// --- User Message Editor Component ---
+interface UserMessageEditorProps {
+    editingState: { id: string; text: string };
+    editActions: {
+        cancel: () => void;
+        submit: (id: string, text: string) => void;
+        set: React.Dispatch<React.SetStateAction<{ id: string; text: string; } | null>>;
+    };
+}
+
+const UserMessageEditor: React.FC<UserMessageEditorProps> = ({ editingState, editActions }) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        // Auto-resize textarea
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [editingState.text]);
+    
+    return (
+        <div className="self-end max-w-xl w-full flex flex-col items-end">
+            <div className="bg-slate-900 border border-purple-600 rounded-xl p-4 w-full">
+                <textarea
+                    ref={textareaRef}
+                    value={editingState.text}
+                    onChange={(e) => editActions.set(prev => prev ? { ...prev, text: e.target.value } : null)}
+                    className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200 text-slate-200 resize-none overflow-y-hidden"
+                    autoFocus
+                    onFocus={(e) => e.currentTarget.select()}
+                />
+                <div className="flex justify-end space-x-2 mt-3">
+                    <button 
+                        onClick={editActions.cancel}
+                        className="px-4 py-1.5 font-semibold text-slate-300 bg-slate-700 rounded-md hover:bg-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-slate-500"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={() => editActions.submit(editingState.id, editingState.text)}
+                        className="px-4 py-1.5 font-semibold text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500"
+                    >
+                        Save & Resubmit
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, icon, history, isLoading, color, onExpandDiagram, onDiagramError, generationId, originalText, editingState, editActions }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isConversationPlaying, setIsConversationPlaying] = useState(false);
@@ -351,8 +420,6 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
   useEffect(() => {
       setIsCopied(false);
       setIsConversationPlaying(false);
-      // Let individual messages handle their own speech cancellation.
-      // Global cancellation here might interfere with playing older messages.
   }, [history]);
 
   const handleCopy = () => {
@@ -518,10 +585,13 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
             </div>
         )}
         {history.map((message, index) => {
-            const messageId = `${personaType}-${index}`;
             if (message.role === 'user') {
+                const isEditingThisMessage = editingState?.id === message.id;
+                if (isEditingThisMessage && editingState) {
+                    return <UserMessageEditor key={message.id} editingState={editingState} editActions={editActions} />;
+                }
                 return (
-                    <div key={messageId} className="self-end max-w-xl w-full flex flex-col items-end relative group">
+                    <div key={message.id} className="self-end max-w-xl w-full flex flex-col items-end relative group">
                         <div className="bg-slate-900 border border-purple-800/60 rounded-xl rounded-br-none p-4">
                             <p className="font-semibold text-purple-300 mb-2 text-right">You</p>
                             <div className="prose-content">
@@ -534,19 +604,21 @@ export const PersonaCard: React.FC<PersonaCardProps> = ({ name, personaType, ico
                             generationId={generationId}
                             originalText={originalText}
                             messageIndex={index}
+                            onStartEdit={editActions.start}
+                            isEditing={!!editingState}
                         />
                     </div>
                 );
             } else { // model
                 return (
-                    <div key={messageId} className="self-start max-w-xl w-full relative group">
+                    <div key={message.id} className="self-start max-w-xl w-full relative group">
                          <div className="bg-slate-800 rounded-xl rounded-bl-none p-4 prose-content">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.rewrite}</ReactMarkdown>
                             {message.mermaidDiagram && (
                                 <MermaidRenderer 
                                     diagram={message.mermaidDiagram}
                                     personaType={personaType}
-                                    messageId={messageId}
+                                    messageId={message.id}
                                     onDiagramError={onDiagramError}
                                     onExpandDiagram={() => onExpandDiagram({ 
                                         name, icon, color, 

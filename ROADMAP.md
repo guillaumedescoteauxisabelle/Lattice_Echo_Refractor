@@ -37,11 +37,11 @@ This phase enhanced the user experience by adding multimedia output and more rob
 This phase will focus on improving the user experience, performance, and accessibility.
 
 - `[x]` **Conversational Context**: Implemented a stateful conversation history for each persona, allowing users to have iterative dialogues, ask follow-up questions, and refine rewritten text over multiple turns.
-- `[*]`, **Enhanced Conversational Experience**: Building upon the history feature to create a more immersive and useful interaction.
+- `[*]` **Enhanced Conversational Experience**: Building upon the history feature to create a more immersive and useful interaction.
     - `[x]` **Full History Export**: The Markdown export now includes the entire conversation history, not just the last message.
     - `[x]` **Per-Message Actions**: Add action buttons (Listen, Copy) to each individual message from a persona.
     - `[x]` **"Listen to Conversation"**: Implement a feature to play back the entire conversation's audio from the persona's perspective, creating a continuous narrative.
-    - `[ ]` **Edit & Resubmit**: Allow users to edit their previous messages and regenerate the AI's response from that point forward.
+    - `[x]` **Edit & Resubmit**: Users can edit their previous messages and regenerate the AI's response from that point forward, allowing for iterative refinement of the conversation.
 - `[*]` **Streaming Responses**: Implement streaming for the `rewrite` text to show results as they are generated, improving perceived performance and user engagement.
 - `[ ]` **UI/UX Enhancements**:
     - `[ ]` Animate transitions between states (e.g., loading, content display) more smoothly.
